@@ -46,7 +46,7 @@ public class PMIServer {
       ServerBootstrap b = new ServerBootstrap();
       b.group(bossGroup, workerGroup)
         .channel(NioServerSocketChannel.class)
-        .childHandler(new ServerChannelInitiallizer())
+        .childHandler(new ServerChannelInitializer())
         .childOption(ChannelOption.SO_KEEPALIVE, true);
 
       // Bind and start to accept incoming connections.

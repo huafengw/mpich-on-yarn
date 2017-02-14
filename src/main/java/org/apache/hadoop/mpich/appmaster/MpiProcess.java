@@ -17,11 +17,14 @@
  */
 package org.apache.hadoop.mpich.appmaster;
 
+import io.netty.channel.Channel;
+
 public class MpiProcess {
+  private Channel channel;
   private String host;   //The host that process will run on
   private int rank;
   private int pmiid;
-  private int size;    //The total number of processes
+  private MpiProcessGroup group;
 
   public String getHost() {
     return host;
@@ -47,11 +50,19 @@ public class MpiProcess {
     this.pmiid = pmiid;
   }
 
-  public int getSize() {
-    return size;
+  public MpiProcessGroup getGroup() {
+    return group;
   }
 
-  public void setSize(int size) {
-    this.size = size;
+  public void setGroup(MpiProcessGroup group) {
+    this.group = group;
+  }
+
+  public Channel getChannel() {
+    return channel;
+  }
+
+  public void setChannel(Channel channel) {
+    this.channel = channel;
   }
 }

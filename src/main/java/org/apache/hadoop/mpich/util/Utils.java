@@ -3,6 +3,7 @@ package org.apache.hadoop.mpich.util;
 import org.apache.hadoop.mpich.appmaster.pmi.ClientToServerCommand;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.util.HashMap;
@@ -56,5 +57,10 @@ public class Utils {
       }
     }
     return results;
+  }
+
+  public static long getPID() {
+    String processName = ManagementFactory.getRuntimeMXBean().getName();
+    return Long.parseLong(processName.split("@")[0]);
   }
 }

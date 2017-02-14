@@ -15,22 +15,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.mpich.appmaster.pmi;
+package org.apache.hadoop.mpich.util;
 
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.LineBasedFrameDecoder;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
+public class PMIResponseBuilder {
+  private StringBuilder builder = new StringBuilder();
 
-public class ServerChannelInitiallizer extends ChannelInitializer<SocketChannel> {
-  @Override
-  public void initChannel(SocketChannel ch) throws Exception {
-    ChannelPipeline pipeline = ch.pipeline();
-    pipeline.addLast(new LineBasedFrameDecoder(256));
-    pipeline.addLast(new StringEncoder());
-    pipeline.addLast(new StringDecoder());
-    pipeline.addLast(new PMIServerHandler());
+  public PMIResponseBuilder append(String key, String value) {
+    builder.append(key + "=" + value + " ");
+    return this;
+  }
+
+  public PMIResponseBuilder append(String key, Integer value) {
+    builder.append(key + "=" + value + " ");
+    return this;
+  }
+
+  public String build() {
+    return builder.append("\n").toString();
   }
 }
