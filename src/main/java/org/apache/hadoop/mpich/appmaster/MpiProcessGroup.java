@@ -38,7 +38,7 @@ public class MpiProcessGroup {
     this.processes = new HashMap<Integer, MpiProcess>();
     for (MpiProcess process: processes) {
       process.setGroup(this);
-      processes.add(process.getPmiid(), process);
+      this.processes.put(process.getPmiid(), process);
     }
     this.kvStore = kvStore;
   }

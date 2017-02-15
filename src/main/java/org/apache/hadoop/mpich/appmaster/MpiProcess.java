@@ -26,6 +26,11 @@ public class MpiProcess {
   private int pmiid;
   private MpiProcessGroup group;
 
+  public MpiProcess(int rank, int pmiid) {
+    this.rank = rank;
+    this.pmiid = pmiid;
+  }
+
   public String getHost() {
     return host;
   }

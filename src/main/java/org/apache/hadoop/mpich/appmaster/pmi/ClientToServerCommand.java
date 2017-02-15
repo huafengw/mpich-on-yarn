@@ -25,7 +25,7 @@ public enum ClientToServerCommand {
   DESTORY_KVS("destroy_kvs"),
   PUT("put"),
   GET("get"),
-  GET_MY_KVS_NAME("get_my_kvsname"),
+  GET_MY_KVSNAME("get_my_kvsname"),
   INIT("init"),
   GET_MAXES("get_maxes"),
   GETBYIDX("getbyidx"),

@@ -38,6 +38,7 @@ public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    System.out.println((String)msg + " from " + ctx.channel().id().toString());
     Map<String, String> kvs = Utils.parseKeyVals((String) msg);
     ClientToServerCommand command = Utils.getCommand(kvs);
     switch (command) {
@@ -45,7 +46,7 @@ public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
         this.onInitAck(kvs, ctx);
         break;
       case INIT:
-        this.onInitAck(kvs, ctx);
+        this.onInit(kvs, ctx);
         break;
       case GET_MAXES:
         this.onGetMaxes(kvs, ctx);
@@ -59,7 +60,7 @@ public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
       case DESTORY_KVS:
         this.onDestoryKVS(kvs, ctx);
         break;
-      case GET_MY_KVS_NAME:
+      case GET_MY_KVSNAME:
         this.onGetMyKvsName(kvs, ctx);
         break;
       case GETBYIDX:
@@ -108,7 +109,7 @@ public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
     ctx.write(new PMIResponseBuilder().append("cmd", "set")
       .append("size", String.valueOf(process.getGroup().getNumProcesses())).build());
     ctx.write(new PMIResponseBuilder().append("cmd", "set")
-      .append("size", String.valueOf(process.getRank())).build());
+      .append("rank", String.valueOf(process.getRank())).build());
     ctx.write(new PMIResponseBuilder().append("cmd", "set")
       .append("debug", "1").build());
   }

@@ -23,14 +23,21 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
+import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
 
 public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> {
+  private MpiProcessManager manager;
+
+  public ServerChannelInitializer(MpiProcessManager manager) {
+    this.manager = manager;
+  }
+
   @Override
   public void initChannel(SocketChannel ch) throws Exception {
     ChannelPipeline pipeline = ch.pipeline();
     pipeline.addLast(new LineBasedFrameDecoder(256));
     pipeline.addLast(new StringEncoder());
     pipeline.addLast(new StringDecoder());
-    //pipeline.addLast(new PMIServerChannelHandler());
+    pipeline.addLast(new PMIServerChannelHandler(manager));
   }
 }

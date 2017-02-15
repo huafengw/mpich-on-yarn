@@ -24,15 +24,19 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.apache.hadoop.mpich.appmaster.MpiProcess;
+import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
 
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PMIServer {
   private int portNum;
-  private Map<Integer, MpiProcess> processes;
+  private List<MpiProcess> processes;
+  private MpiProcessManager manager;
 
-  public PMIServer(Map<Integer, MpiProcess> processes) {
+  public PMIServer(List<MpiProcess> processes) {
     this.processes = processes;
+    this.manager = new MpiProcessManager(processes);
   }
 
   public int getPortNum() {
@@ -46,7 +50,7 @@ public class PMIServer {
       ServerBootstrap b = new ServerBootstrap();
       b.group(bossGroup, workerGroup)
         .channel(NioServerSocketChannel.class)
-        .childHandler(new ServerChannelInitializer())
+        .childHandler(new ServerChannelInitializer(this.manager))
         .childOption(ChannelOption.SO_KEEPALIVE, true);
 
       // Bind and start to accept incoming connections.
@@ -63,7 +67,10 @@ public class PMIServer {
   }
 
   public static void main(String[] args) throws Exception {
-    PMIServer server = new PMIServer(null);
+    List<MpiProcess> processes = new ArrayList<MpiProcess>();
+    processes.add(new MpiProcess(0, 0));
+    processes.add(new MpiProcess(1, 1));
+    PMIServer server = new PMIServer(processes);
     server.run();
   }
 }
