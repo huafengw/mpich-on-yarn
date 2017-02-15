@@ -12,29 +12,6 @@ import java.util.Map;
 import java.util.Random;
 
 public class Utils {
-  public static int findPort(ServerSocket sock) {
-    int minPort = 25000;
-    int maxPort = 40000;
-    int selectedPort;
-
-    /* The loop generates a random port number, opens a socket on
-     * the generated port
-     */
-    while (true) {
-      Random rand = new Random();
-      selectedPort = (rand.nextInt((maxPort - minPort) + 1) + minPort);
-
-      try {
-        sock.bind(new InetSocketAddress(selectedPort));
-      } catch (IOException e) {
-        System.err.println("[Utils.java]:- " + selectedPort +
-          "]Port already in use. Checking for a new port..");
-        continue;
-      }
-      break;
-    }
-    return selectedPort;
-  }
 
   public static ClientToServerCommand getCommand(Map<String, String> kvs) {
     String command = kvs.get("cmd");
