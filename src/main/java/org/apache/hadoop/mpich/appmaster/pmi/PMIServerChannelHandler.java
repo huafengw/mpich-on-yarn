@@ -38,7 +38,7 @@ public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-    System.out.println((String)msg + " from " + ctx.channel().id().toString());
+//    System.out.println((String)msg + " from " + ctx.channel().id().toString());
     Map<String, String> kvs = Utils.parseKeyVals((String) msg);
     ClientToServerCommand command = Utils.getCommand(kvs);
     switch (command) {
@@ -207,7 +207,7 @@ public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
       // Todo "no_room_in_kvs_"
       if (kvStore.containsKey(key)) {
         responseBuilder.append("rc", "-1")
-          .append("msg", "duplicate_key " + key);
+          .append("msg", "duplicate_key_" + key);
       } else {
         kvStore.put(key, value);
         responseBuilder.append("rc", "0")

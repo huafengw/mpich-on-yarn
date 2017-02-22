@@ -23,6 +23,8 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
 
 public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> {
@@ -38,6 +40,7 @@ public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> 
     pipeline.addLast(new LineBasedFrameDecoder(256));
     pipeline.addLast(new StringEncoder());
     pipeline.addLast(new StringDecoder());
+    pipeline.addLast(new LoggingHandler(LogLevel.INFO));
     pipeline.addLast(new PMIServerChannelHandler(manager));
   }
 }

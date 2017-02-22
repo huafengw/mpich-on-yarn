@@ -21,14 +21,15 @@ import io.netty.channel.Channel;
 
 public class MpiProcess {
   private Channel channel;
-  private String host;   //The host that process will run on
+  private String host;   //The host that process will start on
   private int rank;
   private int pmiid;
   private MpiProcessGroup group;
 
-  public MpiProcess(int rank, int pmiid) {
+  public MpiProcess(int rank, int pmiid, String host) {
     this.rank = rank;
     this.pmiid = pmiid;
+    this.host = host;
   }
 
   public String getHost() {

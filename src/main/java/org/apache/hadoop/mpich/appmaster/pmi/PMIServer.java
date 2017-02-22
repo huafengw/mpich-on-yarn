@@ -18,7 +18,7 @@
 package org.apache.hadoop.mpich.appmaster.pmi;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -31,11 +31,12 @@ import java.util.List;
 
 public class PMIServer {
   private int portNum;
-  private List<MpiProcess> processes;
   private MpiProcessManager manager;
+  private EventLoopGroup bossGroup;
+  private EventLoopGroup workerGroup;
+  private Channel channel;
 
   public PMIServer(List<MpiProcess> processes) {
-    this.processes = processes;
     this.manager = new MpiProcessManager(processes);
   }
 
@@ -43,34 +44,37 @@ public class PMIServer {
     return this.portNum;
   }
 
-  public void run() throws Exception {
-    EventLoopGroup bossGroup = new NioEventLoopGroup();
-    EventLoopGroup workerGroup = new NioEventLoopGroup();
-    try {
-      ServerBootstrap b = new ServerBootstrap();
-      b.group(bossGroup, workerGroup)
-        .channel(NioServerSocketChannel.class)
-        .childHandler(new ServerChannelInitializer(this.manager))
-        .childOption(ChannelOption.SO_KEEPALIVE, true);
+  public void start() throws Exception {
+    this.bossGroup = new NioEventLoopGroup();
+    this.workerGroup = new NioEventLoopGroup();
+    ServerBootstrap b = new ServerBootstrap();
+    b.group(bossGroup, workerGroup)
+      .channel(NioServerSocketChannel.class)
+      .childHandler(new ServerChannelInitializer(this.manager))
+      .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-      // Bind and start to accept incoming connections.
-      ChannelFuture f = b.bind(2777).sync();
+    // Bind and start to accept incoming connections.
+    this.channel = b.bind(0).sync().channel();
+    this.portNum = ((NioServerSocketChannel)channel).localAddress().getPort();
+  }
 
-      // Wait until the server socket is closed.
-      // In this example, this does not happen, but you can do that to gracefully
-      // shut down your server.
-      f.channel().closeFuture().sync();
-    } finally {
-      workerGroup.shutdownGracefully();
-      bossGroup.shutdownGracefully();
-    }
+  public void stop() throws InterruptedException {
+    channel.close().sync();
+    workerGroup.shutdownGracefully();
+    bossGroup.shutdownGracefully();
+  }
+
+  private void waitUntilClose() throws InterruptedException {
+    this.channel.closeFuture().sync();
   }
 
   public static void main(String[] args) throws Exception {
     List<MpiProcess> processes = new ArrayList<MpiProcess>();
-    processes.add(new MpiProcess(0, 0));
-    processes.add(new MpiProcess(1, 1));
+    processes.add(new MpiProcess(0, 0, "host1"));
+    processes.add(new MpiProcess(1, 1, "host2"));
     PMIServer server = new PMIServer(processes);
-    server.run();
+    server.start();
+    System.out.println(server.getPortNum());
+    server.waitUntilClose();
   }
 }

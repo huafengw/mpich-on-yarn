@@ -307,7 +307,7 @@ public class MpichYarnClient {
     this.ioMessageHandler.join();
     isRunning = true;
 
-    System.out.println("\nApplication Statistics!");
+    System.out.println("Application Statistics!\n");
     while (true) {
       ApplicationReport appReport = yarnClient.getApplicationReport(appId);
       YarnApplicationState appState = appReport.getYarnApplicationState();

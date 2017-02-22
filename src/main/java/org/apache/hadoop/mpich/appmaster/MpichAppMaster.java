@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mpich.appmaster.pmi.PMIServer;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
@@ -47,7 +48,6 @@ import java.util.List;
 import java.util.Map;
 
 public class MpichAppMaster {
-
   private Configuration conf;
   private String localhost;
   private Socket ioServerSock;
@@ -58,10 +58,11 @@ public class MpichAppMaster {
   private String ioServer;
   private int ioServerPort;
   private String wdir;
-  private String  psl;
-  private String pmiServerPort;
+  private String psl;
   private String wrapperPath;
-  private String [] appArgs;
+  private String[] appArgs;
+  private PMIServer pmiServer;
+  private int currentRank = 0;
   private boolean debugYarn = false;
   private int containerMem;
   private int maxMem;
@@ -72,69 +73,65 @@ public class MpichAppMaster {
   private int completedContainers;
   private List<Container> mpiContainers = new ArrayList<Container>();
 
-  public MpichAppMaster(){
-
+  public MpichAppMaster() {
     conf = new YarnConfiguration();
     opts = new Options();
 
-    opts.addOption("np",true,"Number of Processes");
-    opts.addOption("ioServer",true,"Hostname required for Server Socket");
-    opts.addOption("ioServerPort",true,"Port required for a socket"+
+    opts.addOption("np", true, "Number of Processes");
+    opts.addOption("ioServer", true, "Hostname required for Server Socket");
+    opts.addOption("ioServerPort", true, "Port required for a socket" +
       " redirecting IO");
-    opts.addOption("wdir",true,"Specifies the current working directory");
-    opts.addOption("psl",true,"Specifies the Protocol Switch Limit");
-    opts.addOption("appArgs",true,"Specifies the User Application args");
+    opts.addOption("wdir", true, "Specifies the current working directory");
+    opts.addOption("psl", true, "Specifies the Protocol Switch Limit");
+    opts.addOption("appArgs", true, "Specifies the User Application args");
     opts.getOption("appArgs").setArgs(Option.UNLIMITED_VALUES);
-    opts.addOption("containerMem",true,"Specifies mpj containers memory");
-    opts.addOption("containerCores",true,"Specifies mpj containers v-cores");
-    opts.addOption("mpjContainerPriority",true,"Specifies the prioirty of" +
+    opts.addOption("containerMem", true, "Specifies mpj containers memory");
+    opts.addOption("containerCores", true, "Specifies mpj containers v-cores");
+    opts.addOption("mpjContainerPriority", true, "Specifies the prioirty of" +
       "containers running MPI processes");
-    opts.addOption("debugYarn",false,"Specifies the debug flag");
-
+    opts.addOption("debugYarn", false, "Specifies the debug flag");
   }
 
-  public void init(String [] args){
-    try{
+  public void init(String[] args) {
+    try {
       cliParser = new GnuParser().parse(opts, args);
 
       localhost = InetAddress.getLocalHost().getHostName();
       np = Integer.parseInt(cliParser.getOptionValue("np"));
       ioServer = cliParser.getOptionValue("ioServer");
-      ioServerPort =Integer.parseInt(cliParser.getOptionValue("ioServerPort"));
+      ioServerPort = Integer.parseInt(cliParser.getOptionValue("ioServerPort"));
       wdir = cliParser.getOptionValue("wdir");
       psl = cliParser.getOptionValue("psl");
 
       containerMem = Integer.parseInt(cliParser.getOptionValue
-        ("containerMem","1024"));
+        ("containerMem", "1024"));
 
       containerCores = Integer.parseInt(cliParser.getOptionValue
-        ("containerCores","1"));
+        ("containerCores", "1"));
 
       mpjContainerPriority = Integer.parseInt(cliParser.getOptionValue
-        ("mpjContainerPriority","0"));
+        ("mpjContainerPriority", "0"));
 
-      if(cliParser.hasOption("appArgs")){
+      if (cliParser.hasOption("appArgs")) {
         appArgs = cliParser.getOptionValues("appArgs");
       }
 
-      if(cliParser.hasOption("debugYarn")){
+      if (cliParser.hasOption("debugYarn")) {
         debugYarn = true;
       }
-    }
-    catch(Exception exp){
+    } catch (Exception exp) {
       exp.printStackTrace();
     }
   }
 
   public void run() throws Exception {
-    try{
-      ioServerSock = new Socket(ioServer,ioServerPort);
+    try {
+      ioServerSock = new Socket(ioServer, ioServerPort);
 
       //redirecting stdout and stderr
-      System.setOut(new PrintStream(ioServerSock.getOutputStream(),true));
-      System.setErr(new PrintStream(ioServerSock.getOutputStream(),true));
-    }
-    catch(Exception exp){
+      System.setOut(new PrintStream(ioServerSock.getOutputStream(), true));
+      System.setErr(new PrintStream(ioServerSock.getOutputStream(), true));
+    } catch (Exception exp) {
       exp.printStackTrace();
     }
 
@@ -159,31 +156,31 @@ public class MpichAppMaster {
     Priority priority = Records.newRecord(Priority.class);
     priority.setPriority(mpjContainerPriority);
 
-    maxMem =registerResponse.getMaximumResourceCapability().getMemory();
+    maxMem = registerResponse.getMaximumResourceCapability().getMemory();
 
-    if(debugYarn){
-      System.out.println("[MPJAppMaster]: Max memory capability resources "+
-        "in cluster: "+maxMem);
+    if (debugYarn) {
+      System.out.println("[MPJAppMaster]: Max memory capability resources " +
+        "in cluster: " + maxMem);
     }
 
-    if(containerMem > maxMem){
-      System.out.println("[MPJAppMaster]: container  memory specified above "+
-        "threshold of cluster! Using maximum memory for "+
-        "containers: "+containerMem);
+    if (containerMem > maxMem) {
+      System.out.println("[MPJAppMaster]: container  memory specified above " +
+        "threshold of cluster! Using maximum memory for " +
+        "containers: " + containerMem);
       containerMem = maxMem;
     }
 
     maxCores = registerResponse.getMaximumResourceCapability().getVirtualCores();
 
-    if(debugYarn){
-      System.out.println("[MPJAppMaster]: Max v-cores capability resources "+
-        "in cluster: "+maxCores);
+    if (debugYarn) {
+      System.out.println("[MPJAppMaster]: Max v-cores capability resources " +
+        "in cluster: " + maxCores);
     }
 
-    if(containerCores > maxCores){
-      System.out.println("[MPJAppMaster]: virtual cores specified above "+
-        "threshold of cluster! Using maximum v-cores for "+
-        "containers: "+containerCores);
+    if (containerCores > maxCores) {
+      System.out.println("[MPJAppMaster]: virtual cores specified above " +
+        "threshold of cluster! Using maximum v-cores for " +
+        "containers: " + containerCores);
       containerCores = maxCores;
     }
 
@@ -200,8 +197,7 @@ public class MpichAppMaster {
       rmClient.addContainerRequest(containerReq);
     }
 
-    Map<String,LocalResource> localResources =
-      new HashMap <String,LocalResource> ();
+    Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
     // Creating Local Resource for Wrapper
     LocalResource wrapperJar = Records.newRecord(LocalResource.class);
 
@@ -214,27 +210,43 @@ public class MpichAppMaster {
     // Creating Local Resource for UserClass
     localResources.put("mpj-yarn-wrapper.jar", wrapperJar);
 
-    while (allocatedContainers < np){
+    while (allocatedContainers < np) {
       AllocateResponse response = rmClient.allocate(0);
       mpiContainers.addAll(response.getAllocatedContainers());
       allocatedContainers = mpiContainers.size();
 
-      if(allocatedContainers!=np){Thread.sleep(100);}
+      if (allocatedContainers != np) {
+        Thread.sleep(100);
+      }
     }
 
-    if(debugYarn){
-      System.out.println("[MPJAppMaster]: launching "+allocatedContainers+
+    if (debugYarn) {
+      System.out.println("[MPJAppMaster]: launching " + allocatedContainers +
         " containers");
     }
 
-    for (Container container : mpiContainers) {
-      ContainerLaunchContext ctx =
-        Records.newRecord(ContainerLaunchContext.class);
+    List<MpiProcess> mpiProcesses = new ArrayList<MpiProcess>();
+    for(Container container: mpiContainers) {
+      String host = container.getNodeHttpAddress();
+      //Todo: split the rank and pmiid
+      MpiProcess process = new MpiProcess(this.currentRank, this.currentRank, host);
+      mpiProcesses.add(process);
+    }
 
-      List <String> commands = new ArrayList<String>();
+    try {
+      this.pmiServer = new PMIServer(mpiProcesses);
+      pmiServer.start();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    for (Container container : mpiContainers) {
+      ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
+
+      List<String> commands = new ArrayList<String>();
 
       commands.add(" $JAVA_HOME/bin/java");
-      commands.add(" -Xmx"+containerMem+"m");
+      commands.add(" -Xmx" + containerMem + "m");
       commands.add(" runtime.starter.MpichYarnWrapper");
       commands.add("--ioServer");
       commands.add(ioServer);          // server name
@@ -251,11 +263,11 @@ public class MpichAppMaster {
       commands.add("--pmiServer");
       commands.add(localhost);
       commands.add("--pmiServerPort");
-      commands.add(pmiServerPort);
+      commands.add(String.valueOf(this.pmiServer.getPortNum()));
 
-      if(appArgs != null){
+      if (appArgs != null) {
         commands.add("--appArgs");
-        for(int i = 0; i < appArgs.length; i++){
+        for (int i = 0; i < appArgs.length; i++) {
           commands.add(appArgs[i]);
         }
       }
@@ -276,26 +288,27 @@ public class MpichAppMaster {
 
     while (completedContainers < np) {
       // argument to allocate() is the progress indicator
-      AllocateResponse response = rmClient.allocate(completedContainers/np);
+      AllocateResponse response = rmClient.allocate(completedContainers / np);
 
-      for (ContainerStatus status : response.getCompletedContainersStatuses()){
-        if(debugYarn){
-          System.out.println("\n[MPJAppMaster]: Container Id - "+
+      for (ContainerStatus status : response.getCompletedContainersStatuses()) {
+        if (debugYarn) {
+          System.out.println("\n[MPJAppMaster]: Container Id - " +
             status.getContainerId());
-          System.out.println("[MPJAppMaster]: Container State - "+
+          System.out.println("[MPJAppMaster]: Container State - " +
             status.getState().toString());
-          System.out.println("[MPJAppMaster]: Container Diagnostics - "+
+          System.out.println("[MPJAppMaster]: Container Diagnostics - " +
             status.getDiagnostics());
 
         }
         ++completedContainers;
       }
 
-      if(completedContainers!=np){Thread.sleep(100);};
+      if (completedContainers != np) {
+        Thread.sleep(100);
+      }
     }
     // Un-register with ResourceManager
-    rmClient.unregisterApplicationMaster(FinalApplicationStatus.SUCCEEDED,
-      "", "");
+    rmClient.unregisterApplicationMaster(FinalApplicationStatus.SUCCEEDED,"", "");
     //shutDown AppMaster IO
     System.out.println("EXIT");
   }
@@ -305,22 +318,19 @@ public class MpichAppMaster {
       YarnConfiguration.YARN_APPLICATION_CLASSPATH,
       YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH)) {
 
-      Apps.addToEnvironment(containerEnv,
-        Environment.CLASSPATH.name(), c.trim());
+      Apps.addToEnvironment(containerEnv, Environment.CLASSPATH.name(), c.trim());
     }
 
-    Apps.addToEnvironment(containerEnv,
-      Environment.CLASSPATH.name(),
+    Apps.addToEnvironment(containerEnv, Environment.CLASSPATH.name(),
       Environment.PWD.$() + File.separator + "*");
   }
 
   public static void main(String[] args) throws Exception {
-    for(String x: args){
+    for (String x : args) {
       System.out.println(x);
     }
     MpichAppMaster am = new MpichAppMaster();
     am.init(args);
     am.run();
   }
-
 }
