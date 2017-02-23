@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.mpich.appmaster.pmi;
+package org.apache.hadoop.mpich.appmaster.netty;
 
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -26,6 +26,7 @@ import io.netty.handler.codec.string.StringEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
+import org.apache.hadoop.mpich.appmaster.pmi.PMIClientCommandHandler;
 
 public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> {
   private MpiProcessManager manager;
@@ -37,10 +38,11 @@ public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> 
   @Override
   public void initChannel(SocketChannel ch) throws Exception {
     ChannelPipeline pipeline = ch.pipeline();
+    PMIClientCommandHandler handler = new PMIClientCommandHandler(manager, ch);
     pipeline.addLast(new LineBasedFrameDecoder(256));
     pipeline.addLast(new StringEncoder());
     pipeline.addLast(new StringDecoder());
     pipeline.addLast(new LoggingHandler(LogLevel.INFO));
-    pipeline.addLast(new PMIServerChannelHandler(manager));
+    pipeline.addLast(new ClientChannelHandler(handler));
   }
 }

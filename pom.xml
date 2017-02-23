@@ -48,7 +48,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.apache.hadoop.mpich.appmaster.pmi.PMIServer</mainClass>
+                            <mainClass>org.apache.hadoop.mpich.appmaster.netty.PMIServer</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

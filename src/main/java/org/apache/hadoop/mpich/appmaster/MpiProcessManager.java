@@ -18,8 +18,10 @@
 package org.apache.hadoop.mpich.appmaster;
 
 import io.netty.channel.Channel;
+import org.apache.hadoop.mpich.MpiProcess;
+import org.apache.hadoop.mpich.MpiProcessGroup;
 import org.apache.hadoop.mpich.util.KVStore;
-import org.apache.hadoop.mpich.util.Utils;
+import org.apache.hadoop.mpich.util.KVStoreFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -29,11 +31,12 @@ public class MpiProcessManager {
   private Map<String, KVStore> kvStores;
   private Map<Channel, MpiProcess> channelToProcess;
   private MpiProcessGroup currentGroup;
-  private int numKvStores = 0;
 
   public MpiProcessManager(List<MpiProcess> processes) {
     this.kvStores = new HashMap<String, KVStore>();
-    this.currentGroup = new MpiProcessGroup(processes, newKvStore());
+    KVStore kvStore = KVStoreFactory.newKVStore();
+    this.currentGroup = new MpiProcessGroup(processes, kvStore);
+    this.kvStores.put(kvStore.getName(), kvStore);
     this.channelToProcess = new HashMap<Channel, MpiProcess>();
   }
 
@@ -57,14 +60,6 @@ public class MpiProcessManager {
 
   public MpiProcess getProcessByChannel(Channel channel) {
     return channelToProcess.get(channel);
-  }
-
-  private KVStore newKvStore() {
-    String kvsName = "kvs_" + Utils.getPID() + "_" + numKvStores;
-    KVStore kvStore = new KVStore(kvsName);
-    this.kvStores.put(kvsName, kvStore);
-    numKvStores += 1;
-    return kvStore;
   }
 
   public int getUniverseSize() {

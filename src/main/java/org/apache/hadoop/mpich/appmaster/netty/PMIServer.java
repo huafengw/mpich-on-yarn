@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.mpich.appmaster.pmi;
+package org.apache.hadoop.mpich.appmaster.netty;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -23,7 +23,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import org.apache.hadoop.mpich.appmaster.MpiProcess;
+import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
 
 import java.util.ArrayList;

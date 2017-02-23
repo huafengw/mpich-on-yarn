@@ -37,7 +37,7 @@ public class Utils {
     } else {
       String mcmd = kvs.get("mcmd");
       if (mcmd != null && !mcmd.equals("")) {
-        return ClientToServerCommand.valueOf(command.toUpperCase());
+        return ClientToServerCommand.valueOf(mcmd.toUpperCase());
       }
     }
     return ClientToServerCommand.UNRECOGNIZED;
@@ -49,7 +49,7 @@ public class Utils {
     for(String kvPair : kvPairs) {
       String[] kv = kvPair.trim().split("=");
       if (kv.length != 2) {
-        throw new Exception("Parse message " + msg + " failed");
+        //throw new Exception("Parse message " + msg + " failed");
       } else {
         results.put(kv[0], kv[1]);
       }

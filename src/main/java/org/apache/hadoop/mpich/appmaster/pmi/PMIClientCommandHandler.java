@@ -17,140 +17,167 @@
  */
 package org.apache.hadoop.mpich.appmaster.pmi;
 
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import org.apache.hadoop.mpich.appmaster.MpiProcess;
-import org.apache.hadoop.mpich.appmaster.MpiProcessGroup;
+import io.netty.channel.Channel;
+import org.apache.hadoop.mpich.MpiProcess;
+import org.apache.hadoop.mpich.MpiProcessGroup;
 import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
 import org.apache.hadoop.mpich.util.KVPair;
 import org.apache.hadoop.mpich.util.KVStore;
 import org.apache.hadoop.mpich.util.PMIResponseBuilder;
 import org.apache.hadoop.mpich.util.Utils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
-public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
+public class PMIClientCommandHandler {
+  private static List<String> EMPTY_RESPONSE = new ArrayList<String>();
+  private Channel channel;
   private MpiProcessManager manager;
+  private boolean inSpawn = false;
+  private SpawnCommandHandler spawnCommandHandler = new SpawnCommandHandler();
 
-  public PMIServerChannelHandler(MpiProcessManager manager) {
+  public PMIClientCommandHandler(MpiProcessManager manager, Channel channel) {
     this.manager = manager;
+    this.channel = channel;
   }
 
-  @Override
-  public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-//    System.out.println((String)msg + " from " + ctx.channel().id().toString());
-    Map<String, String> kvs = Utils.parseKeyVals((String) msg);
-    ClientToServerCommand command = Utils.getCommand(kvs);
-    switch (command) {
-      case INITACK:
-        this.onInitAck(kvs, ctx);
-        break;
-      case INIT:
-        this.onInit(kvs, ctx);
-        break;
-      case GET_MAXES:
-        this.onGetMaxes(kvs, ctx);
-        break;
-      case GET_APPNUM:
-       this.onGetAppNum(kvs, ctx);
-        break;
-      case CREATE_KVS:
-        this.onCreateKVS(kvs, ctx);
-        break;
-      case DESTORY_KVS:
-        this.onDestoryKVS(kvs, ctx);
-        break;
-      case GET_MY_KVSNAME:
-        this.onGetMyKvsName(kvs, ctx);
-        break;
-      case GETBYIDX:
-        this.onGetByIdx(kvs, ctx);
-        break;
-      case PUT:
-        this.onPut(kvs, ctx);
-        break;
-      case GET:
-        this.onGet(kvs, ctx);
-        break;
-      case BARRIER_IN:
-        this.onBarrierIn(kvs, ctx);
-        break;
-      case SPAWN:
-        // Todo
-        break;
-      case ABORT:
-        this.onAbort(kvs, ctx);
-        break;
-      case GET_UNIVERSE_SIZE:
-        this.onGetUniverseSize(kvs, ctx);
-        break;
-      case FINALIZE:
-        this.onFinalize(kvs, ctx);
-        break;
+  public List<String> process(String msg) throws Exception {
+    if (inSpawn) {
+      return this.processSpawn(msg);
+    } else {
+      return this.processNormalComm(msg);
     }
   }
 
-  @Override
-  public void channelReadComplete(ChannelHandlerContext ctx) {
-    ctx.flush();
+  private List<String> processSpawn(String msg) {
+    this.spawnCommandHandler.process(msg);
+    if (this.spawnCommandHandler.allMsgProcessed()) {
+      List<String> response = new ArrayList<String>();
+
+      response.add(new PMIResponseBuilder()
+        .append("cmd", "spawn_result")
+        .append("rc", 0).build());
+      this.spawnCommandHandler = new SpawnCommandHandler();
+      this.inSpawn = false;
+      return response;
+    } else {
+      return EMPTY_RESPONSE;
+    }
   }
 
-  @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    cause.printStackTrace();
-    ctx.close();
+  private List<String> processNormalComm(String msg) throws Exception {
+    Map<String, String> kvs = Utils.parseKeyVals(msg);
+    ClientToServerCommand command = Utils.getCommand(kvs);
+    List<String> responses = new ArrayList<String>();
+    switch (command) {
+      case SPAWN:
+        this.inSpawn = true;
+        break;
+      case INITACK:
+        responses = this.onInitAck(kvs);
+        break;
+      case INIT:
+        responses = this.onInit(kvs);
+        break;
+      case GET_MAXES:
+        responses =  this.onGetMaxes(kvs);
+        break;
+      case GET_APPNUM:
+        responses = this.onGetAppNum(kvs);
+        break;
+      case CREATE_KVS:
+        responses = this.onCreateKVS(kvs);
+        break;
+      case DESTORY_KVS:
+        responses = this.onDestoryKVS(kvs);
+        break;
+      case GET_MY_KVSNAME:
+        responses = this.onGetMyKvsName(kvs);
+        break;
+      case GETBYIDX:
+        responses = this.onGetByIdx(kvs);
+        break;
+      case PUT:
+        responses = this.onPut(kvs);
+        break;
+      case GET:
+        responses = this.onGet(kvs);
+        break;
+      case BARRIER_IN:
+        responses = this.onBarrierIn(kvs);
+        break;
+      case ABORT:
+        responses = this.onAbort(kvs);
+        break;
+      case GET_UNIVERSE_SIZE:
+        responses = this.onGetUniverseSize(kvs);
+        break;
+      case FINALIZE:
+        responses = this.onFinalize(kvs);
+        break;
+    }
+    return responses;
   }
 
-  private void onInitAck(Map<String, String> kvs, ChannelHandlerContext ctx) {
+  private List<String> onInitAck(Map<String, String> kvs) {
+    List<String> response = new ArrayList<String>();
     Integer pmiid = Integer.parseInt(kvs.get("pmiid"));
     MpiProcess process = this.manager.getProcessById(pmiid);
-    manager.addClient(pmiid, ctx.channel());
-    ctx.write(new PMIResponseBuilder().append("cmd", "initack").build());
-    ctx.write(new PMIResponseBuilder().append("cmd", "set")
+    manager.addClient(pmiid, this.channel);
+    response.add(new PMIResponseBuilder().append("cmd", "initack").build());
+    response.add(new PMIResponseBuilder().append("cmd", "set")
       .append("size", String.valueOf(process.getGroup().getNumProcesses())).build());
-    ctx.write(new PMIResponseBuilder().append("cmd", "set")
+    response.add(new PMIResponseBuilder().append("cmd", "set")
       .append("rank", String.valueOf(process.getRank())).build());
-    ctx.write(new PMIResponseBuilder().append("cmd", "set")
+    response.add(new PMIResponseBuilder().append("cmd", "set")
       .append("debug", "1").build());
+    return response;
   }
 
-  private void onInit(Map<String, String> kvs, ChannelHandlerContext ctx) {
+  private List<String> onInit(Map<String, String> kvs) {
+    List<String> response = new ArrayList<String>();
     String pmi_version = kvs.get("pmi_version");
     String pmi_subversion = kvs.get("pmi_subversion");
-    String response = new PMIResponseBuilder()
+    String msg = new PMIResponseBuilder()
       .append("cmd", "response_to_init")
       .append("pmi_version", pmi_version)
       .append("pmi_subversion", pmi_subversion)
       .append("rc", "0").build();
-    ctx.write(response);
+    response.add(msg);
+    return response;
   }
 
-  private void onGetMaxes(Map<String, String> kvs, ChannelHandlerContext ctx) {
-    String response = new PMIResponseBuilder()
+  private List<String> onGetMaxes(Map<String, String> kvs) {
+    List<String> response = new ArrayList<String>();
+    String msg = new PMIResponseBuilder()
       .append("cmd", "maxes")
       .append("kvsname_max", "256")
       .append("keylen_max", "64")
       .append("vallen_max", "256").build();
-    ctx.write(response);
+    response.add(msg);
+    return response;
   }
 
-  private void onGetAppNum(Map<String, String> kvs, ChannelHandlerContext ctx) {
-    String response = new PMIResponseBuilder().
-      append("cmd", "appnum").append("appnum", "0").build();
-    ctx.write(response);
+  private List<String> onGetAppNum(Map<String, String> kvs) {
+    List<String> response = new ArrayList<String>();
+    response.add(new PMIResponseBuilder().
+      append("cmd", "appnum").append("appnum", "0").build());
+    return response;
   }
 
-  private void onGetMyKvsName(Map<String, String> kvs, ChannelHandlerContext ctx) {
-    MpiProcess process = this.manager.getProcessByChannel(ctx.channel());
+  private List<String> onGetMyKvsName(Map<String, String> kvs) {
+    List<String> response = new ArrayList<String>();
+    MpiProcess process = this.manager.getProcessByChannel(this.channel);
     if (process != null) {
       String storeName = process.getGroup().getKvStore().getName();
-      String response = new PMIResponseBuilder().
-        append("cmd", "my_kvsname").append("kvsname", storeName).build();
-      ctx.write(response);
+      response.add(new PMIResponseBuilder().
+        append("cmd", "my_kvsname").append("kvsname", storeName).build());
     }
+    return response;
   }
 
-  private void onGetByIdx(Map<String, String> kvs, ChannelHandlerContext ctx) {
+  private List<String> onGetByIdx(Map<String, String> kvs) {
     String kvsName = kvs.get("kvsname");
     KVStore kvStore = this.manager.getKvStore(kvsName);
     PMIResponseBuilder responseBuilder = new PMIResponseBuilder()
@@ -171,11 +198,13 @@ public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
       responseBuilder.append("rc", "-1")
         .append("reason", "kvs_" + kvsName + "_not_found");
     }
-    ctx.write(responseBuilder.build());
+    List<String> response = new ArrayList<String>();
+    response.add(responseBuilder.build());
+    return response;
   }
 
-  private void onBarrierIn(Map<String, String> kvs, ChannelHandlerContext ctx) {
-    MpiProcess process = this.manager.getProcessByChannel(ctx.channel());
+  private List<String> onBarrierIn(Map<String, String> kvs) {
+    MpiProcess process = this.manager.getProcessByChannel(this.channel);
     if (process != null) {
       MpiProcessGroup group = process.getGroup();
       Integer numInBarrier = group.getnInBarrier().incrementAndGet();
@@ -188,15 +217,17 @@ public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
         group.getnInBarrier().set(0);
       }
     }
+    return EMPTY_RESPONSE;
   }
 
-  private void onFinalize(Map<String, String> kvs, ChannelHandlerContext ctx) {
-    String response = new PMIResponseBuilder()
-      .append("cmd", "finalize_ack").build();
-    ctx.write(response);
+  private List<String> onFinalize(Map<String, String> kvs) {
+    List<String> response = new ArrayList<String>();
+    response.add(new PMIResponseBuilder()
+      .append("cmd", "finalize_ack").build());
+    return response;
   }
 
-  private void onPut(Map<String, String> kvs, ChannelHandlerContext ctx) {
+  private List<String> onPut(Map<String, String> kvs) {
     String kvsName = kvs.get("kvsname");
     KVStore kvStore = this.manager.getKvStore(kvsName);
     PMIResponseBuilder responseBuilder = new PMIResponseBuilder()
@@ -217,10 +248,12 @@ public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
       responseBuilder.append("rc", "-1")
         .append("msg", "kvs_" + kvsName + "_not_found");
     }
-    ctx.write(responseBuilder.build());
+    List<String> response = new ArrayList<String>();
+    response.add(responseBuilder.build());
+    return response;
   }
 
-  private void onGet(Map<String, String> kvs, ChannelHandlerContext ctx) {
+  private List<String> onGet(Map<String, String> kvs) {
     String kvsName = kvs.get("kvsname");
     KVStore kvStore = this.manager.getKvStore(kvsName);
     PMIResponseBuilder responseBuilder = new PMIResponseBuilder()
@@ -247,25 +280,31 @@ public class PMIServerChannelHandler extends ChannelInboundHandlerAdapter {
     String result = responseBuilder.append("rc", rc)
       .append("msg", msg)
       .append("value", value).build();
-    ctx.write(result);
+    List<String> response = new ArrayList<String>();
+    response.add(result);
+    return response;
   }
 
-  private void onAbort(Map<String, String> kvs, ChannelHandlerContext ctx) {
-
-  }
-
-  private void onGetUniverseSize(Map<String, String> kvs, ChannelHandlerContext ctx){
-    PMIResponseBuilder builder = new PMIResponseBuilder()
+  private List<String> onGetUniverseSize(Map<String, String> kvs) {
+    List<String> response = new ArrayList<String>();
+    response.add(new PMIResponseBuilder()
       .append("cmd", "universe_size")
-      .append("size", this.manager.getUniverseSize());
-    ctx.write(builder.build());
+      .append("size", this.manager.getUniverseSize()).build());
+    return response;
   }
 
-  private void onCreateKVS(Map<String, String> kvs, ChannelHandlerContext ctx) {
-
+  private List<String> onAbort(Map<String, String> kvs) {
+    List<String> response = new ArrayList<String>();
+    return response;
   }
 
-  private void onDestoryKVS(Map<String, String> kvs, ChannelHandlerContext ctx) {
+  private List<String> onCreateKVS(Map<String, String> kvs) {
+    List<String> response = new ArrayList<String>();
+    return response;
+  }
 
+  private List<String> onDestoryKVS(Map<String, String> kvs) {
+    List<String> response = new ArrayList<String>();
+    return response;
   }
 }

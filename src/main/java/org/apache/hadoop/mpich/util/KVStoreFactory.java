@@ -15,35 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.mpich.appmaster.pmi;
 
-public enum ClientToServerCommand {
-  BARRIER_IN("barrier_in"),
-  FINALIZE("finalize"),
-  ABORT("abort"),
-  CREATE_KVS("create_kvs"),
-  DESTORY_KVS("destroy_kvs"),
-  PUT("put"),
-  GET("get"),
-  GET_MY_KVSNAME("get_my_kvsname"),
-  INIT("init"),
-  GET_MAXES("get_maxes"),
-  GETBYIDX("getbyidx"),
-  INITACK("initack"),
-  SPAWN("spawn"),
-  GET_UNIVERSE_SIZE("get_universe_size"),
-  GET_APPNUM("get_appnum"),
-  UNRECOGNIZED("unrecognized"),
-  ENDCMD("endcmd");
+package org.apache.hadoop.mpich.util;
 
-  private final String text;
+import java.util.concurrent.atomic.AtomicInteger;
 
-  private ClientToServerCommand(final String text) {
-    this.text = text;
-  }
+public class KVStoreFactory {
+  private static AtomicInteger numKvStores = new AtomicInteger(0);
 
-  @Override
-  public String toString() {
-    return text;
+  public static KVStore newKVStore() {
+    String kvsName = "kvs_" + Utils.getPID() + "_" + numKvStores.getAndIncrement();
+    return new KVStore(kvsName);
   }
 }

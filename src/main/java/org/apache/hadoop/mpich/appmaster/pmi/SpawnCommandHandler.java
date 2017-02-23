@@ -17,33 +17,20 @@
  */
 package org.apache.hadoop.mpich.appmaster.pmi;
 
-public enum ClientToServerCommand {
-  BARRIER_IN("barrier_in"),
-  FINALIZE("finalize"),
-  ABORT("abort"),
-  CREATE_KVS("create_kvs"),
-  DESTORY_KVS("destroy_kvs"),
-  PUT("put"),
-  GET("get"),
-  GET_MY_KVSNAME("get_my_kvsname"),
-  INIT("init"),
-  GET_MAXES("get_maxes"),
-  GETBYIDX("getbyidx"),
-  INITACK("initack"),
-  SPAWN("spawn"),
-  GET_UNIVERSE_SIZE("get_universe_size"),
-  GET_APPNUM("get_appnum"),
-  UNRECOGNIZED("unrecognized"),
-  ENDCMD("endcmd");
+import org.apache.hadoop.mpich.ProcessApp;
 
-  private final String text;
+import java.util.ArrayList;
+import java.util.List;
 
-  private ClientToServerCommand(final String text) {
-    this.text = text;
+public class SpawnCommandHandler {
+  private List<ProcessApp> processApps = new ArrayList<ProcessApp>();
+  private ProcessApp currentApp = new ProcessApp();
+
+  public void process(String msg) {
+
   }
 
-  @Override
-  public String toString() {
-    return text;
+  public boolean allMsgProcessed() {
+    return false;
   }
 }
