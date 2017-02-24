@@ -15,34 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.mpich.appmaster.pmi;
+package org.apache.hadoop.mpich.appmaster;
 
-public enum ClientToServerCommand {
-  BARRIER_IN("barrier_in"),
-  FINALIZE("finalize"),
-  ABORT("abort"),
-  CREATE_KVS("create_kvs"),
-  DESTORY_KVS("destroy_kvs"),
-  PUT("put"),
-  GET("get"),
-  GET_MY_KVSNAME("get_my_kvsname"),
-  INIT("init"),
-  GET_MAXES("get_maxes"),
-  GETBYIDX("getbyidx"),
-  INITACK("initack"),
-  SPAWN("spawn"),
-  GET_UNIVERSE_SIZE("get_universe_size"),
-  GET_APPNUM("get_appnum"),
-  UNRECOGNIZED("unrecognized");
+import org.apache.hadoop.mpich.ProcessWorld;
 
-  private final String text;
-
-  private ClientToServerCommand(final String text) {
-    this.text = text;
-  }
-
-  @Override
-  public String toString() {
-    return text;
-  }
+public interface MpiProcessWorldLauncher {
+  public boolean launch(ProcessWorld processWorld);
 }

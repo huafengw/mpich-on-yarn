@@ -19,18 +19,9 @@ package org.apache.hadoop.mpich.appmaster.netty;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import org.apache.hadoop.mpich.MpiProcess;
-import org.apache.hadoop.mpich.MpiProcessGroup;
-import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
-import org.apache.hadoop.mpich.appmaster.pmi.ClientToServerCommand;
 import org.apache.hadoop.mpich.appmaster.pmi.PMIClientCommandHandler;
-import org.apache.hadoop.mpich.util.KVPair;
-import org.apache.hadoop.mpich.util.KVStore;
-import org.apache.hadoop.mpich.util.PMIResponseBuilder;
-import org.apache.hadoop.mpich.util.Utils;
 
 import java.util.List;
-import java.util.Map;
 
 public class ClientChannelHandler extends ChannelInboundHandlerAdapter {
   private PMIClientCommandHandler handler;

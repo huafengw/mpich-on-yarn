@@ -20,6 +20,7 @@ package org.apache.hadoop.mpich.appmaster;
 import io.netty.channel.Channel;
 import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.MpiProcessGroup;
+import org.apache.hadoop.mpich.ProcessWorld;
 import org.apache.hadoop.mpich.util.KVStore;
 import org.apache.hadoop.mpich.util.KVStoreFactory;
 
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MpiProcessManager {
+  private MpiProcessWorldLauncher launcher;
   private Map<String, KVStore> kvStores;
   private Map<Channel, MpiProcess> channelToProcess;
   private MpiProcessGroup currentGroup;
@@ -64,5 +66,9 @@ public class MpiProcessManager {
 
   public int getUniverseSize() {
     return currentGroup.getNumProcesses();
+  }
+
+  public boolean launch(ProcessWorld processWorld) {
+    return this.launcher.launch(processWorld);
   }
 }

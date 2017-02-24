@@ -1,5 +1,8 @@
 package org.apache.hadoop.mpich;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ProcessApp {
   // Appnum of this group
   private int appNum;
@@ -14,10 +17,51 @@ public class ProcessApp {
   private int argNum;
 
   // Array of args
-  private String args;
+  private List<String> args;
 
   // Number of processes in this app
   private int numProcess;
+
+  // Architecture type
+  private String arch;
+
+  // Search path for executables
+  private String path;
+
+  // Working directory
+  private String wdir;
+
+  public String getArch() {
+    return arch;
+  }
+
+  public void setArch(String arch) {
+    this.arch = arch;
+  }
+
+  public String getPath() {
+    return path;
+  }
+
+  public void setPath(String path) {
+    this.path = path;
+  }
+
+  public String getWdir() {
+    return wdir;
+  }
+
+  public void setWdir(String wdir) {
+    this.wdir = wdir;
+  }
+
+  public ProcessApp() {
+    this.args = new ArrayList<String>();
+  }
+
+  public void addArg(int index, String arg) {
+    this.args.add(index, arg);
+  }
 
   public int getAppNum() {
     return appNum;
@@ -51,11 +95,11 @@ public class ProcessApp {
     this.argNum = argNum;
   }
 
-  public String getArgs() {
+  public List<String> getArgs() {
     return args;
   }
 
-  public void setArgs(String args) {
+  public void setArgs(List<String> args) {
     this.args = args;
   }
 

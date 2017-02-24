@@ -17,27 +17,12 @@
  */
 package org.apache.hadoop.mpich.appmaster.pmi;
 
-public enum ClientToServerCommand {
-  BARRIER_IN("barrier_in"),
-  FINALIZE("finalize"),
-  ABORT("abort"),
-  CREATE_KVS("create_kvs"),
-  DESTORY_KVS("destroy_kvs"),
-  PUT("put"),
-  GET("get"),
-  GET_MY_KVSNAME("get_my_kvsname"),
-  INIT("init"),
-  GET_MAXES("get_maxes"),
-  GETBYIDX("getbyidx"),
-  INITACK("initack"),
-  SPAWN("spawn"),
-  GET_UNIVERSE_SIZE("get_universe_size"),
-  GET_APPNUM("get_appnum"),
-  UNRECOGNIZED("unrecognized");
+public enum SpawnCommand {
+  ENDCMD("endcmd");
 
   private final String text;
 
-  private ClientToServerCommand(final String text) {
+  private SpawnCommand(final String text) {
     this.text = text;
   }
 

@@ -20,6 +20,7 @@ package org.apache.hadoop.mpich.appmaster.pmi;
 import io.netty.channel.Channel;
 import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.MpiProcessGroup;
+import org.apache.hadoop.mpich.ProcessWorld;
 import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
 import org.apache.hadoop.mpich.util.KVPair;
 import org.apache.hadoop.mpich.util.KVStore;
@@ -54,10 +55,17 @@ public class PMIClientCommandHandler {
     this.spawnCommandHandler.process(msg);
     if (this.spawnCommandHandler.allMsgProcessed()) {
       List<String> response = new ArrayList<String>();
+      PMIResponseBuilder responseBuilder = new PMIResponseBuilder()
+        .append("cmd", "spawn_result");
 
-      response.add(new PMIResponseBuilder()
-        .append("cmd", "spawn_result")
-        .append("rc", 0).build());
+      ProcessWorld toSpawn = this.spawnCommandHandler.getProcessWorld();
+      Boolean success = this.manager.launch(toSpawn);
+      if (success) {
+        responseBuilder.append("rc", 0);
+      } else {
+        responseBuilder.append("rc", 1);
+      }
+      response.add(responseBuilder.build());
       this.spawnCommandHandler = new SpawnCommandHandler();
       this.inSpawn = false;
       return response;

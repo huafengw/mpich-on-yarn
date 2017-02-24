@@ -15,34 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.mpich.appmaster.pmi;
+package org.apache.hadoop.mpich.appmaster;
 
-public enum ClientToServerCommand {
-  BARRIER_IN("barrier_in"),
-  FINALIZE("finalize"),
-  ABORT("abort"),
-  CREATE_KVS("create_kvs"),
-  DESTORY_KVS("destroy_kvs"),
-  PUT("put"),
-  GET("get"),
-  GET_MY_KVSNAME("get_my_kvsname"),
-  INIT("init"),
-  GET_MAXES("get_maxes"),
-  GETBYIDX("getbyidx"),
-  INITACK("initack"),
-  SPAWN("spawn"),
-  GET_UNIVERSE_SIZE("get_universe_size"),
-  GET_APPNUM("get_appnum"),
-  UNRECOGNIZED("unrecognized");
+import org.apache.commons.configuration.Configuration;
+import org.apache.hadoop.yarn.api.records.LocalResource;
+import org.apache.hadoop.yarn.api.records.Priority;
+import org.apache.hadoop.yarn.api.records.Resource;
 
-  private final String text;
+import java.util.Map;
 
-  private ClientToServerCommand(final String text) {
-    this.text = text;
-  }
+public class MpiApplicationContext {
+  private Configuration conf;
+  private Resource containerResource;
+  private Priority priority;
+  private Map<String, LocalResource> localResources;
 
-  @Override
-  public String toString() {
-    return text;
-  }
+  private String ioServer;
+  private int ioServerPort;
+  private String pmiServer;
+  private int pmiServerPort;
 }

@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MpiProcessGroup {
+  private int groupId;
   private AtomicInteger nInBarrier;
   private int numProcesses;
   private Map<Integer, MpiProcess> processes;
