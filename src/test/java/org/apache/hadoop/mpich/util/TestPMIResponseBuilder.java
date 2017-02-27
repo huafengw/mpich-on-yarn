@@ -17,5 +17,18 @@
  */
 package org.apache.hadoop.mpich.util;
 
+import org.junit.Assert;
+
 public class TestPMIResponseBuilder {
+
+    @org.junit.Test
+
+    public void testPMIResponseBuilder(){
+        PMIResponseBuilder example = new PMIResponseBuilder();
+        example.append("3",5);
+        example.append("hwz","sh");
+        Assert.assertEquals("3=5 hwz=sh \n",example.build());
+    }
+
+
 }

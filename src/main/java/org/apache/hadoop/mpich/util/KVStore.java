@@ -38,12 +38,16 @@ public class KVStore {
     this.store.put(key, value);
   }
 
+  public void put(KVPair pair){
+    this.store.put(pair.getKey(),pair.getValue());
+  }
+
   public String get(String key) {
     return this.store.get(key);
   }
 
   public KVPair getKVPairByIdx(int index) {
-    if (index > store.size() || index < 0) {
+    if (index >= store.size() || index < 0) {
       return null;
     } else {
       String key = new ArrayList<String>(store.keySet()).get(index);

@@ -33,4 +33,13 @@ public class KVPair {
   public String getValue() {
     return value;
   }
+
+  @Override
+  public boolean equals(Object other) {
+    if (other instanceof KVPair) {
+      return this.key.equals(((KVPair)other).getKey()) && this.value.equals(((KVPair)other).getValue());
+    } else {
+      return false;
+    }
+  }
 }
