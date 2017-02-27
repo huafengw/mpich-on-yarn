@@ -2,6 +2,8 @@
 *.jar
 *.war
 *.ear
+*.class
+target/
 hs_err_pid*
 
 # IntelliJ

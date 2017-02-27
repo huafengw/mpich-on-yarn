@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.mpich.appmaster;
 
-import org.apache.commons.configuration.Configuration;
 import org.apache.hadoop.mpich.ProcessWorld;
 import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.api.records.Priority;
