@@ -1,0 +1,19 @@
+language: java
+sudo: false
+addons:
+  apt:
+    packages:
+      - oracle-java8-installer
+jdk:
+  - oraclejdk8
+  - oraclejdk7
+  - openjdk6
+cache:
+  directories:
+    - "$HOME/.m2"
+script:
+  - jdk_switcher use oraclejdk8
+  - # do stuff with Java 8
+  - jdk_switcher use oraclejdk7
+  - # do stuff with Java 7
+    mvn test -B
