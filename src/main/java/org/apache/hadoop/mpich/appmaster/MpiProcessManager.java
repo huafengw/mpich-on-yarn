@@ -78,7 +78,7 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
   }
 
   public int getUniverseSize() {
-    return -1;
+    return this.pmiidToProcess.size();
   }
 
   public synchronized boolean launch(ProcessWorld processWorld) {
@@ -97,7 +97,7 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
       MpiProcessGroup group = new MpiProcessGroup(launched, processWorld.getKvStore());
       this.addMpiProcessGroup(group);
     } catch (Exception e) {
-
+      // LOG ERROR
     }
     return false;
   }

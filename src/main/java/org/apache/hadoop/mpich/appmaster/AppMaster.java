@@ -60,13 +60,19 @@ public class AppMaster {
   private MpiProcessManager mpiProcessManager;
   private List<Container> mpiContainers = new ArrayList<Container>();
 
-  public AppMaster() {
-    conf = new YarnConfiguration();
+  public AppMaster(AppMasterArguments arguments) {
+    this.conf = new YarnConfiguration();
+    this.appArguments = arguments;
   }
 
-  public void init(String[] args) {
+  public void run() throws Exception {
     try {
-      this.appArguments = AppMasterArgumentsParser.parse(args);
+      ioServerSock = new Socket(appArguments.getIoServer(), appArguments.getIoServerPort());
+
+      //redirecting stdout and stderr
+      System.setOut(new PrintStream(ioServerSock.getOutputStream(), true));
+      System.setErr(new PrintStream(ioServerSock.getOutputStream(), true));
+
       pmServerHost = InetAddress.getLocalHost().getHostName();
       pmServerPort = Utils.findFreePort();
 
@@ -79,19 +85,6 @@ public class AppMaster {
       ContainerAllocator allocator = new ContainerAllocator(applicationContext, this.rmClient);
       this.mpiProcessManager = new MpiProcessManager(allocator);
       this.pmiServer = new PMIServer(mpiProcessManager, pmServerPort);
-
-    } catch (Exception exp) {
-      exp.printStackTrace();
-    }
-  }
-
-  public void run() throws Exception {
-    try {
-      ioServerSock = new Socket(appArguments.getIoServer(), appArguments.getIoServerPort());
-
-      //redirecting stdout and stderr
-      System.setOut(new PrintStream(ioServerSock.getOutputStream(), true));
-      System.setErr(new PrintStream(ioServerSock.getOutputStream(), true));
     } catch (Exception exp) {
       exp.printStackTrace();
     }
@@ -262,19 +255,19 @@ public class AppMaster {
       YarnConfiguration.YARN_APPLICATION_CLASSPATH,
       YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH)) {
 
-      Apps.addToEnvironment(containerEnv, Environment.CLASSPATH.name(), c.trim());
+      Apps.addToEnvironment(containerEnv, Environment.CLASSPATH.name(), c.trim(), File.pathSeparator);
     }
 
     Apps.addToEnvironment(containerEnv, Environment.CLASSPATH.name(),
-      Environment.PWD.$() + File.separator + "*");
+      Environment.PWD.$() + File.separator + "*", File.pathSeparator);
   }
 
   public static void main(String[] args) throws Exception {
     for (String x : args) {
       System.out.println(x);
     }
-    AppMaster am = new AppMaster();
-    am.init(args);
+    AppMasterArguments arguments = AppMasterArgumentsParser.parse(args);
+    AppMaster am = new AppMaster(arguments);
     am.run();
   }
 }

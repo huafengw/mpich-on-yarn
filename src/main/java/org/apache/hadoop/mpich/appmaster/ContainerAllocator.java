@@ -20,7 +20,6 @@ package org.apache.hadoop.mpich.appmaster;
 import org.apache.hadoop.mpich.util.Constants;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.records.Container;
-import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
@@ -42,17 +41,11 @@ public class ContainerAllocator {
   }
 
   public void init() {
-    this.amrmClient.start();
+    this.nmClient.init(context.getConf());
     this.nmClient.start();
   }
 
-  private ContainerRequest createContainerRequest(Resource resource, String[] hosts,
-      String[] racks, Priority priority) {
-    return new ContainerRequest(resource, hosts, racks, priority);
-  }
-
   public List<Container> allocate(Map<String, Integer> hostToContainerCount) throws IOException, YarnException, InterruptedException {
-    int requested = 0;
     for (String host : hostToContainerCount.keySet()) {
       Integer num = hostToContainerCount.get(host);
       for (int i = 0; i < num; i++) {
@@ -63,7 +56,6 @@ public class ContainerAllocator {
         ContainerRequest request = new ContainerRequest(context.getContainerResource(),
           hosts, null, context.getPriority());
         this.amrmClient.addContainerRequest(request);
-        requested += 1;
       }
     }
 
@@ -97,6 +89,10 @@ public class ContainerAllocator {
     } else {
       // LOG ERROR
     }
+  }
+
+  public void launchContainer() {
+
   }
 
   public void stop() {
