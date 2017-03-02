@@ -17,10 +17,11 @@
  */
 package org.apache.hadoop.mpich.appmaster;
 
-import org.apache.commons.configuration.Configuration;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.records.LocalResource;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.webapp.hamlet.HamletSpec;
 
 import java.util.Map;
 
@@ -34,4 +35,50 @@ public class MpiApplicationContext {
   private int ioServerPort;
   private String pmiServer;
   private int pmiServerPort;
+
+  public MpiApplicationContext(String ioServer, int ioServerPort,
+      String pmiServer, int pmiServerPort,
+      Configuration conf, Resource containerResource,
+      Priority priority, Map<String, LocalResource> localResources) {
+    this.ioServer = ioServer;
+    this.ioServerPort = ioServerPort;
+    this.pmiServer = pmiServer;
+    this.pmiServerPort = pmiServerPort;
+    this.conf = conf;
+    this.containerResource = containerResource;
+    this.priority = priority;
+    this.localResources = localResources;
+  }
+
+  public Configuration getConf() {
+    return conf;
+  }
+
+  public Resource getContainerResource() {
+    return containerResource;
+  }
+
+  public Priority getPriority() {
+    return priority;
+  }
+
+  public Map<String, LocalResource> getLocalResources() {
+    return localResources;
+  }
+
+  public String getIoServer() {
+    return ioServer;
+  }
+
+  public int getIoServerPort() {
+    return ioServerPort;
+  }
+
+  public String getPmiServer() {
+    return pmiServer;
+  }
+
+  public int getPmiServerPort() {
+    return pmiServerPort;
+  }
 }

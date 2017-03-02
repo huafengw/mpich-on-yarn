@@ -17,6 +17,9 @@
  */
 package org.apache.hadoop.mpich;
 
+import org.apache.hadoop.mpich.util.KVStore;
+import org.apache.hadoop.mpich.util.KVStoreFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,27 +29,37 @@ public class ProcessWorld {
   private int numApps;
   private int numProcs;
   private int worldNum;
+  private KVStore kvStore;
   private List<ProcessApp> apps;
 
   public ProcessWorld() {
     this.numApps = 0;
     this.numProcs = 0;
     this.apps = new ArrayList<ProcessApp>();
+    this.kvStore = KVStoreFactory.newKVStore();
   }
 
   public void addProcessApp(ProcessApp app) {
     this.apps.add(app);
     this.numApps += 1;
-    this.numApps += app.getNumProcess();
+    this.numProcs += app.getNumProcess();
   }
 
   public List<ProcessApp> getApps() {
     return this.apps;
   }
 
+  public int getNumProcs() {
+    return this.numProcs;
+  }
+
+  public KVStore getKvStore() {
+    return kvStore;
+  }
+
   public Map<String, Integer> getHostProcMap() {
     Map<String, Integer> hostToProcs = new HashMap<String, Integer>();
-    for (ProcessApp app: apps) {
+    for (ProcessApp app: this.getApps()) {
       String appHost = app.getHostName();
       if (appHost != null && !appHost.equals("")) {
         if (hostToProcs.containsKey(appHost)) {

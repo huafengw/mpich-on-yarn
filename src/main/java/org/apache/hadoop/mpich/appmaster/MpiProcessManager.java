@@ -22,32 +22,45 @@ import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.MpiProcessGroup;
 import org.apache.hadoop.mpich.ProcessWorld;
 import org.apache.hadoop.mpich.util.KVStore;
-import org.apache.hadoop.mpich.util.KVStoreFactory;
+import org.apache.hadoop.mpich.util.PendingMpiProcesses;
+import org.apache.hadoop.yarn.api.records.Container;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MpiProcessManager {
-  private MpiProcessWorldLauncher launcher;
+public class MpiProcessManager implements MpiProcessWorldLauncher {
   private Map<String, KVStore> kvStores;
+  private Map<Integer, MpiProcess> pmiidToProcess;
   private Map<Channel, MpiProcess> channelToProcess;
-  private MpiProcessGroup currentGroup;
+  private ContainerAllocator containerAllocator;
 
-  public MpiProcessManager(List<MpiProcess> processes) {
+  // For test
+  public MpiProcessManager() {
+    this(null);
+  }
+
+  public MpiProcessManager(ContainerAllocator containerAllocator) {
     this.kvStores = new HashMap<String, KVStore>();
-    KVStore kvStore = KVStoreFactory.newKVStore();
-    this.currentGroup = new MpiProcessGroup(processes, kvStore);
-    this.kvStores.put(kvStore.getName(), kvStore);
+    this.pmiidToProcess = new HashMap<Integer, MpiProcess>();
     this.channelToProcess = new HashMap<Channel, MpiProcess>();
+    this.containerAllocator = containerAllocator;
+  }
+
+  public synchronized void addMpiProcessGroup(MpiProcessGroup mpiProcessGroup) {
+    this.kvStores.put(mpiProcessGroup.getKvStore().getName(), mpiProcessGroup.getKvStore());
+    for (MpiProcess process : mpiProcessGroup.getProcesses()) {
+      this.pmiidToProcess.put(process.getPmiid(), process);
+    }
   }
 
   public MpiProcess getProcessById(int pmiid) {
-    return currentGroup.getProcessById(pmiid);
+    return this.pmiidToProcess.get(pmiid);
   }
 
   public synchronized void addClient(int pmiid, Channel channel) {
-    MpiProcess process = currentGroup.getProcessById(pmiid);
+    MpiProcess process = this.getProcessById(pmiid);
     if (process != null) {
       process.setChannel(channel);
       this.channelToProcess.put(channel, process);
@@ -65,10 +78,38 @@ public class MpiProcessManager {
   }
 
   public int getUniverseSize() {
-    return currentGroup.getNumProcesses();
+    return -1;
   }
 
-  public boolean launch(ProcessWorld processWorld) {
-    return this.launcher.launch(processWorld);
+  public synchronized boolean launch(ProcessWorld processWorld) {
+    try {
+      PendingMpiProcesses pendingMpiProcesses = new PendingMpiProcesses(processWorld);
+      List<Container> containers = this.containerAllocator.allocate(pendingMpiProcesses.getHostProcMap());
+      // assert containers.size == pendingMpiProcesses.pending
+      List<MpiProcess> launched = new ArrayList<MpiProcess>();
+      for (Container container : containers) {
+        String host = container.getNodeId().getHost();
+        MpiProcess processToLaunch = pendingMpiProcesses.getNextProcessToLaunch(host);
+
+        launched.add(processToLaunch);
+        this.containerAllocator.removeMatchingRequest(container);
+      }
+      MpiProcessGroup group = new MpiProcessGroup(launched, processWorld.getKvStore());
+      this.addMpiProcessGroup(group);
+    } catch (Exception e) {
+
+    }
+    return false;
+  }
+
+  private List<String> getMpiSpecificCommands(MpiProcess process) {
+    List<String> commands = new ArrayList<String>();
+    commands.add("--np");
+    commands.add(Integer.toString(process.getGroup().getNumProcesses()));
+    commands.add("--rank");
+    commands.add(Integer.toString(process.getRank()));
+    commands.add("--pmiid");
+    commands.add(Integer.toString(process.getPmiid()));
+    return commands;
   }
 }

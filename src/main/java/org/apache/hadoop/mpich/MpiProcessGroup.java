@@ -30,7 +30,6 @@ public class MpiProcessGroup {
   private AtomicInteger nInBarrier;
   private int numProcesses;
   private Map<Integer, MpiProcess> processes;
-
   private KVStore kvStore;
 
   public MpiProcessGroup(List<MpiProcess> processes, KVStore kvStore) {

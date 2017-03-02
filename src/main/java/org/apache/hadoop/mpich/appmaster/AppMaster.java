@@ -17,16 +17,12 @@
  */
 package org.apache.hadoop.mpich.appmaster;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.appmaster.netty.PMIServer;
+import org.apache.hadoop.mpich.util.Utils;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
@@ -48,78 +44,42 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MpichAppMaster {
+public class AppMaster {
   private Configuration conf;
-  private String localhost;
+  private String pmServerHost;
+  private int pmServerPort;
   private Socket ioServerSock;
-  private int rank;
-  private Options opts;
-  private CommandLine cliParser;
-  private int np;
-  private String ioServer;
-  private int ioServerPort;
-  private String wdir;
-  private String psl;
   private String wrapperPath;
-  private String[] appArgs;
   private PMIServer pmiServer;
-  private int currentRank = 0;
-  private boolean debugYarn = false;
-  private int containerMem;
   private int maxMem;
-  private int containerCores;
   private int maxCores;
-  private int mpjContainerPriority;
   private int allocatedContainers;
   private int completedContainers;
+  private AppMasterArguments appArguments;
+  private AMRMClient<ContainerRequest> rmClient;
+  private MpiProcessManager mpiProcessManager;
   private List<Container> mpiContainers = new ArrayList<Container>();
 
-  public MpichAppMaster() {
+  public AppMaster() {
     conf = new YarnConfiguration();
-    opts = new Options();
-
-    opts.addOption("np", true, "Number of Processes");
-    opts.addOption("ioServer", true, "Hostname required for Server Socket");
-    opts.addOption("ioServerPort", true, "Port required for a socket" +
-      " redirecting IO");
-    opts.addOption("wdir", true, "Specifies the current working directory");
-    opts.addOption("psl", true, "Specifies the Protocol Switch Limit");
-    opts.addOption("appArgs", true, "Specifies the User Application args");
-    opts.getOption("appArgs").setArgs(Option.UNLIMITED_VALUES);
-    opts.addOption("containerMem", true, "Specifies mpj containers memory");
-    opts.addOption("containerCores", true, "Specifies mpj containers v-cores");
-    opts.addOption("mpjContainerPriority", true, "Specifies the prioirty of" +
-      "containers running MPI processes");
-    opts.addOption("debugYarn", false, "Specifies the debug flag");
   }
 
   public void init(String[] args) {
     try {
-      cliParser = new GnuParser().parse(opts, args);
+      this.appArguments = AppMasterArgumentsParser.parse(args);
+      pmServerHost = InetAddress.getLocalHost().getHostName();
+      pmServerPort = Utils.findFreePort();
 
-      localhost = InetAddress.getLocalHost().getHostName();
-      np = Integer.parseInt(cliParser.getOptionValue("np"));
-      ioServer = cliParser.getOptionValue("ioServer");
-      ioServerPort = Integer.parseInt(cliParser.getOptionValue("ioServerPort"));
-      wdir = cliParser.getOptionValue("wdir");
-      psl = cliParser.getOptionValue("psl");
+      // Initialize AM <--> RM communication protocol
+      rmClient = AMRMClient.createAMRMClient();
+      rmClient.init(conf);
+      rmClient.start();
 
-      containerMem = Integer.parseInt(cliParser.getOptionValue
-        ("containerMem", "1024"));
+      MpiApplicationContext applicationContext = null;
+      ContainerAllocator allocator = new ContainerAllocator(applicationContext, this.rmClient);
+      this.mpiProcessManager = new MpiProcessManager(allocator);
+      this.pmiServer = new PMIServer(mpiProcessManager, pmServerPort);
 
-      containerCores = Integer.parseInt(cliParser.getOptionValue
-        ("containerCores", "1"));
-
-      mpjContainerPriority = Integer.parseInt(cliParser.getOptionValue
-        ("mpjContainerPriority", "0"));
-
-      if (cliParser.hasOption("appArgs")) {
-        appArgs = cliParser.getOptionValues("appArgs");
-      }
-
-      if (cliParser.hasOption("debugYarn")) {
-        debugYarn = true;
-      }
     } catch (Exception exp) {
       exp.printStackTrace();
     }
@@ -127,7 +87,7 @@ public class MpichAppMaster {
 
   public void run() throws Exception {
     try {
-      ioServerSock = new Socket(ioServer, ioServerPort);
+      ioServerSock = new Socket(appArguments.getIoServer(), appArguments.getIoServerPort());
 
       //redirecting stdout and stderr
       System.setOut(new PrintStream(ioServerSock.getOutputStream(), true));
@@ -140,11 +100,6 @@ public class MpichAppMaster {
     Path wrapperDest = new Path(wrapperPath);
     FileStatus destStatus = fs.getFileStatus(wrapperDest);
 
-    // Initialize AM <--> RM communication protocol
-    AMRMClient<ContainerRequest> rmClient = AMRMClient.createAMRMClient();
-    rmClient.init(conf);
-    rmClient.start();
-
     // Initialize AM <--> NM communication protocol
     NMClient nmClient = NMClient.createNMClient();
     nmClient.init(conf);
@@ -155,43 +110,43 @@ public class MpichAppMaster {
       rmClient.registerApplicationMaster("", 0, "");
     // Priority for containers - priorities are intra-application
     Priority priority = Records.newRecord(Priority.class);
-    priority.setPriority(mpjContainerPriority);
+    priority.setPriority(appArguments.getMpjContainerPriority());
 
     maxMem = registerResponse.getMaximumResourceCapability().getMemory();
 
-    if (debugYarn) {
+    if (appArguments.isDebugYarn()) {
       System.out.println("[MPJAppMaster]: Max memory capability resources " +
         "in cluster: " + maxMem);
     }
 
-    if (containerMem > maxMem) {
-      System.out.println("[MPJAppMaster]: container  memory specified above " +
-        "threshold of cluster! Using maximum memory for " +
-        "containers: " + containerMem);
-      containerMem = maxMem;
-    }
+//    if (containerMem > maxMem) {
+//      System.out.println("[MPJAppMaster]: container  memory specified above " +
+//        "threshold of cluster! Using maximum memory for " +
+//        "containers: " + containerMem);
+//      containerMem = maxMem;
+//    }
 
     maxCores = registerResponse.getMaximumResourceCapability().getVirtualCores();
 
-    if (debugYarn) {
+    if (appArguments.isDebugYarn()) {
       System.out.println("[MPJAppMaster]: Max v-cores capability resources " +
         "in cluster: " + maxCores);
     }
 
-    if (containerCores > maxCores) {
-      System.out.println("[MPJAppMaster]: virtual cores specified above " +
-        "threshold of cluster! Using maximum v-cores for " +
-        "containers: " + containerCores);
-      containerCores = maxCores;
-    }
+//    if (containerCores > maxCores) {
+//      System.out.println("[MPJAppMaster]: virtual cores specified above " +
+//        "threshold of cluster! Using maximum v-cores for " +
+//        "containers: " + containerCores);
+//      containerCores = maxCores;
+//    }
 
     // Resource requirements for containers
     Resource capability = Records.newRecord(Resource.class);
-    capability.setMemory(containerMem);
-    capability.setVirtualCores(containerCores);
+    capability.setMemory(appArguments.getContainerMem());
+    capability.setVirtualCores(appArguments.getContainerCores());
 
     // Make container requests to ResourceManager
-    for (int i = 0; i < np; ++i) {
+    for (int i = 0; i < appArguments.getNp(); ++i) {
       ContainerRequest containerReq =
         new ContainerRequest(capability, null, null, priority);
 
@@ -211,31 +166,23 @@ public class MpichAppMaster {
     // Creating Local Resource for UserClass
     localResources.put("mpj-yarn-wrapper.jar", wrapperJar);
 
-    while (allocatedContainers < np) {
+    while (allocatedContainers < appArguments.getNp()) {
       AllocateResponse response = rmClient.allocate(0);
       mpiContainers.addAll(response.getAllocatedContainers());
       allocatedContainers = mpiContainers.size();
 
-      if (allocatedContainers != np) {
+      if (allocatedContainers != appArguments.getNp()) {
         Thread.sleep(100);
       }
     }
 
-    if (debugYarn) {
+    if (appArguments.isDebugYarn()) {
       System.out.println("[MPJAppMaster]: launching " + allocatedContainers +
         " containers");
     }
 
-    List<MpiProcess> mpiProcesses = new ArrayList<MpiProcess>();
-    for(Container container: mpiContainers) {
-      String host = container.getNodeHttpAddress();
-      //Todo: split the rank and pmiid
-      MpiProcess process = new MpiProcess(this.currentRank, this.currentRank, host);
-      mpiProcesses.add(process);
-    }
-
     try {
-      this.pmiServer = new PMIServer(mpiProcesses);
+      this.pmiServer = new PMIServer(mpiProcessManager, 0);
       pmiServer.start();
     } catch (Exception e) {
       e.printStackTrace();
@@ -247,29 +194,25 @@ public class MpichAppMaster {
       List<String> commands = new ArrayList<String>();
 
       commands.add(" $JAVA_HOME/bin/java");
-      commands.add(" -Xmx" + containerMem + "m");
+      commands.add(" -Xmx" + appArguments.getContainerMem() + "m");
       commands.add(" runtime.starter.MpichYarnWrapper");
       commands.add("--ioServer");
-      commands.add(ioServer);          // server name
+      commands.add(appArguments.getIoServer());          // server name
       commands.add("--ioServerPort");
-      commands.add(Integer.toString(ioServerPort)); // IO server port
+      commands.add(Integer.toString(appArguments.getIoServerPort())); // IO server port
       commands.add("--psl");
-      commands.add(psl);                 // protocol switch limit
-      commands.add("--np");
-      commands.add(Integer.toString(np));   // no. of containers
-      commands.add("--rank");
-      commands.add(" " + Integer.toString(rank++)); // rank
+      commands.add(appArguments.getPsl());                 // protocol switch limit
 
       //temp sock port to share rank and ports
       commands.add("--pmiServer");
-      commands.add(localhost);
+      commands.add(pmServerHost);
       commands.add("--pmiServerPort");
-      commands.add(String.valueOf(this.pmiServer.getPortNum()));
+      commands.add(String.valueOf(pmServerPort));
 
-      if (appArgs != null) {
+      if (appArguments.getAppArgs() != null) {
         commands.add("--appArgs");
-        for (int i = 0; i < appArgs.length; i++) {
-          commands.add(appArgs[i]);
+        for (int i = 0; i < appArguments.getAppArgs().length; i++) {
+          commands.add(appArguments.getAppArgs()[i]);
         }
       }
 
@@ -287,12 +230,12 @@ public class MpichAppMaster {
       nmClient.startContainer(container, ctx);
     }
 
-    while (completedContainers < np) {
+    while (completedContainers < appArguments.getNp()) {
       // argument to allocate() is the progress indicator
-      AllocateResponse response = rmClient.allocate(completedContainers / np);
+      AllocateResponse response = rmClient.allocate(completedContainers / appArguments.getNp());
 
       for (ContainerStatus status : response.getCompletedContainersStatuses()) {
-        if (debugYarn) {
+        if (appArguments.isDebugYarn()) {
           System.out.println("\n[MPJAppMaster]: Container Id - " +
             status.getContainerId());
           System.out.println("[MPJAppMaster]: Container State - " +
@@ -304,7 +247,7 @@ public class MpichAppMaster {
         ++completedContainers;
       }
 
-      if (completedContainers != np) {
+      if (completedContainers != appArguments.getNp()) {
         Thread.sleep(100);
       }
     }
@@ -330,7 +273,7 @@ public class MpichAppMaster {
     for (String x : args) {
       System.out.println(x);
     }
-    MpichAppMaster am = new MpichAppMaster();
+    AppMaster am = new AppMaster();
     am.init(args);
     am.run();
   }

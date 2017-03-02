@@ -22,7 +22,7 @@ import org.apache.hadoop.mpich.ProcessWorld;
 import org.apache.hadoop.mpich.util.KVStore;
 import org.apache.hadoop.mpich.util.KVStoreFactory;
 
-public class SpawnCommandHandler {
+public class SpawnCommandParser {
   private int preput_num = -1;
   private int totalSpawns = -1;
   private int spawnSoFar = -1;

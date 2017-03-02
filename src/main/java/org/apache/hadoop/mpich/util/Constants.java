@@ -8,4 +8,6 @@ public class Constants {
   public static String PMI_VERSION = "pmi_version";
 
   public static String PMI_SUBVERSION = "pmi_subversion";
+
+  public static String ANY_HOST = "*";
 }

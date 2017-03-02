@@ -26,6 +26,7 @@ import io.netty.handler.codec.string.StringEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
+import org.apache.hadoop.mpich.appmaster.MpiProcessWorldLauncher;
 import org.apache.hadoop.mpich.appmaster.pmi.PMIClientCommandHandler;
 
 public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> {

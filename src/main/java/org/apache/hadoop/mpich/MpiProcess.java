@@ -20,16 +20,22 @@ package org.apache.hadoop.mpich;
 import io.netty.channel.Channel;
 
 public class MpiProcess {
-  private Channel channel;
+  private ProcessApp app;
   private String host;   //The host that process will start on
   private int rank;
   private int pmiid;
+  private Channel channel;
   private MpiProcessGroup group;
 
   public MpiProcess(int rank, int pmiid, String host) {
+    this(rank, pmiid, host, null);
+  }
+
+  public MpiProcess(int rank, int pmiid, String host, ProcessApp app) {
     this.rank = rank;
     this.pmiid = pmiid;
     this.host = host;
+    this.app = app;
   }
 
   public String getHost() {

@@ -24,7 +24,10 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.apache.hadoop.mpich.MpiProcess;
+import org.apache.hadoop.mpich.MpiProcessGroup;
 import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
+import org.apache.hadoop.mpich.appmaster.MpiProcessWorldLauncher;
+import org.apache.hadoop.mpich.util.KVStoreFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,8 +39,9 @@ public class PMIServer {
   private EventLoopGroup workerGroup;
   private Channel channel;
 
-  public PMIServer(List<MpiProcess> processes) {
-    this.manager = new MpiProcessManager(processes);
+  public PMIServer(MpiProcessManager manager, int portNum) {
+    this.manager = manager;
+    this.portNum = portNum;
   }
 
   public int getPortNum() {
@@ -54,8 +58,7 @@ public class PMIServer {
       .childOption(ChannelOption.SO_KEEPALIVE, true);
 
     // Bind and start to accept incoming connections.
-    this.channel = b.bind(0).sync().channel();
-    this.portNum = ((NioServerSocketChannel)channel).localAddress().getPort();
+    this.channel = b.bind(portNum).sync().channel();
   }
 
   public void stop() throws InterruptedException {
@@ -72,7 +75,10 @@ public class PMIServer {
     List<MpiProcess> processes = new ArrayList<MpiProcess>();
     processes.add(new MpiProcess(0, 0, "host1"));
     processes.add(new MpiProcess(1, 1, "host2"));
-    PMIServer server = new PMIServer(processes);
+    MpiProcessGroup group = new MpiProcessGroup(processes, KVStoreFactory.newKVStore());
+    MpiProcessManager manager = new MpiProcessManager();
+    manager.addMpiProcessGroup(group);
+    PMIServer server = new PMIServer(manager, 0);
     server.start();
     System.out.println(server.getPortNum());
     server.waitUntilClose();

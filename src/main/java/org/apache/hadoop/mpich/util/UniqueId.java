@@ -17,20 +17,12 @@
  */
 package org.apache.hadoop.mpich.util;
 
-import org.junit.Assert;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class TestKVStore {
+public class UniqueId {
+  private static AtomicInteger id = new AtomicInteger(0);
 
-  @org.junit.Test
-  public void testKVStore() {
-    KVStore example = new KVStore("ex1");
-    example.put(new KVPair("kv", "pair"));
-    example.put("3", "5");
-    example.put("hwz", "518");
-    example.put("\n", "sh");
-    Assert.assertEquals("ex1", example.getName());
-    Assert.assertEquals(true, example.containsKey("kv"));
-    Assert.assertEquals("pair", example.get("kv"));
-    Assert.assertEquals(new KVPair("\n", "sh"), example.getKVPairByIdx(3));
+  public static Integer nextId() {
+    return id.getAndIncrement();
   }
 }

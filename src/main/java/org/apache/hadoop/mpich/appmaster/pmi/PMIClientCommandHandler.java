@@ -22,6 +22,7 @@ import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.MpiProcessGroup;
 import org.apache.hadoop.mpich.ProcessWorld;
 import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
+import org.apache.hadoop.mpich.appmaster.MpiProcessWorldLauncher;
 import org.apache.hadoop.mpich.util.KVPair;
 import org.apache.hadoop.mpich.util.KVStore;
 import org.apache.hadoop.mpich.util.PMIResponseBuilder;
@@ -36,7 +37,7 @@ public class PMIClientCommandHandler {
   private Channel channel;
   private MpiProcessManager manager;
   private boolean inSpawn = false;
-  private SpawnCommandHandler spawnCommandHandler = new SpawnCommandHandler();
+  private SpawnCommandParser spawnCommandParser = new SpawnCommandParser();
 
   public PMIClientCommandHandler(MpiProcessManager manager, Channel channel) {
     this.manager = manager;
@@ -52,13 +53,13 @@ public class PMIClientCommandHandler {
   }
 
   private List<String> processSpawn(String msg) {
-    this.spawnCommandHandler.process(msg);
-    if (this.spawnCommandHandler.allMsgProcessed()) {
+    this.spawnCommandParser.process(msg);
+    if (this.spawnCommandParser.allMsgProcessed()) {
       List<String> response = new ArrayList<String>();
       PMIResponseBuilder responseBuilder = new PMIResponseBuilder()
         .append("cmd", "spawn_result");
 
-      ProcessWorld toSpawn = this.spawnCommandHandler.getProcessWorld();
+      ProcessWorld toSpawn = this.spawnCommandParser.getProcessWorld();
       Boolean success = this.manager.launch(toSpawn);
       if (success) {
         responseBuilder.append("rc", 0);
@@ -66,7 +67,7 @@ public class PMIClientCommandHandler {
         responseBuilder.append("rc", 1);
       }
       response.add(responseBuilder.build());
-      this.spawnCommandHandler = new SpawnCommandHandler();
+      this.spawnCommandParser = new SpawnCommandParser();
       this.inSpawn = false;
       return response;
     } else {

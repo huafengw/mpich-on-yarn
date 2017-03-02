@@ -21,14 +21,22 @@ import org.apache.hadoop.mpich.appmaster.pmi.ClientToServerCommand;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 public class Utils {
+  public static int findFreePort() throws IOException {
+    ServerSocket socket = new ServerSocket(0);
+    try {
+      return socket.getLocalPort();
+    } finally {
+      try {
+        socket.close();
+      } catch (IOException e) {
+      }
+    }
+  }
 
   public static ClientToServerCommand getCommand(Map<String, String> kvs) {
     String command = kvs.get("cmd");

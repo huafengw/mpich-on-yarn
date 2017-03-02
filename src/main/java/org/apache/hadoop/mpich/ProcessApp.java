@@ -1,5 +1,7 @@
 package org.apache.hadoop.mpich;
 
+import org.apache.hadoop.mpich.util.Constants;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +33,11 @@ public class ProcessApp {
   // Working directory
   private String wdir;
 
+  public ProcessApp() {
+    this.args = new ArrayList<String>();
+    this.hostName = Constants.ANY_HOST;
+  }
+
   public String getArch() {
     return arch;
   }
@@ -53,10 +60,6 @@ public class ProcessApp {
 
   public void setWdir(String wdir) {
     this.wdir = wdir;
-  }
-
-  public ProcessApp() {
-    this.args = new ArrayList<String>();
   }
 
   public void addArg(int index, String arg) {
