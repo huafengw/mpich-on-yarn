@@ -67,7 +67,11 @@ public class PendingMpiProcesses {
     if (mpiProcesses != null && mpiProcesses.size() > 0) {
       return mpiProcesses.poll();
     } else {
-      return null;
+      mpiProcesses = this.remainingProcesses.get(Constants.ANY_HOST);
+      if (mpiProcesses != null && mpiProcesses.size() > 0) {
+        return mpiProcesses.poll();
+      }
     }
+    return null;
   }
 }
