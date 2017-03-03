@@ -20,7 +20,6 @@ package org.apache.hadoop.mpich.appmaster;
 public class AppMasterArguments {
   private int np;
   private String wdir;
-  private String psl;
   private int containerMem;
   private int containerCores;
   private int mpjContainerPriority;
@@ -28,13 +27,13 @@ public class AppMasterArguments {
   private int ioServerPort;
   private String[] appArgs;
   private boolean debugYarn;
+  private String executable;
 
-  public AppMasterArguments(int np, String wdir, String psl, int containerMem,
+  public AppMasterArguments(int np, String wdir, int containerMem,
       int containerCores, int mpjContainerPriority, String ioServer,
       int ioServerPort, String[] appArgs, boolean debugYarn) {
     this.np = np;
     this.wdir = wdir;
-    this.psl = psl;
     this.containerMem = containerMem;
     this.containerCores = containerCores;
     this.mpjContainerPriority = mpjContainerPriority;
@@ -50,10 +49,6 @@ public class AppMasterArguments {
 
   public String getWdir() {
     return wdir;
-  }
-
-  public String getPsl() {
-    return psl;
   }
 
   public int getContainerMem() {
@@ -82,5 +77,9 @@ public class AppMasterArguments {
 
   public boolean isDebugYarn() {
     return debugYarn;
+  }
+
+  public String getExecutable() {
+    return executable;
   }
 }

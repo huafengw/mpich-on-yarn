@@ -17,61 +17,62 @@
  */
 package org.apache.hadoop.mpich.appmaster;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.util.Constants;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.records.Container;
+import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.client.api.NMClient;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
+import org.apache.hadoop.yarn.util.Apps;
+import org.apache.hadoop.yarn.util.Records;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
 public class ContainerAllocator {
-  private MpiApplicationContext context;
+  private static final Log LOG = LogFactory.getLog(ContainerAllocator.class);
+  private MpiApplicationContext appContext;
   private AMRMClient<ContainerRequest> amrmClient;
   private NMClient nmClient;
 
   public ContainerAllocator(MpiApplicationContext context, AMRMClient<ContainerRequest> amrmClient) {
-    this.context = context;
+    this.appContext = context;
     this.amrmClient = amrmClient;
     this.nmClient = NMClient.createNMClient();
   }
 
   public void init() {
-    this.nmClient.init(context.getConf());
+    this.nmClient.init(appContext.getConf());
     this.nmClient.start();
   }
 
-  public List<Container> allocate(Map<String, Integer> hostToContainerCount) throws IOException, YarnException, InterruptedException {
+  public List<Container> allocate(Map<String, Integer> hostToContainerCount)
+      throws IOException, YarnException, InterruptedException {
     for (String host : hostToContainerCount.keySet()) {
       Integer num = hostToContainerCount.get(host);
       for (int i = 0; i < num; i++) {
         String[] hosts = null;
         if (!host.equals(Constants.ANY_HOST)) {
+          // Todo: standardize the hosts format
           hosts = new String[]{host};
         }
-        ContainerRequest request = new ContainerRequest(context.getContainerResource(),
-          hosts, null, context.getPriority());
+        ContainerRequest request = new ContainerRequest(appContext.getContainerResource(),
+          hosts, null, appContext.getContainerPriority());
         this.amrmClient.addContainerRequest(request);
       }
     }
 
-    int allocatedNum = 0;
-    List<Container> containers = new ArrayList<Container>();
-//    while (allocatedNum < totalRequest) {
-      AllocateResponse response = amrmClient.allocate(0);
-      containers.addAll(response.getAllocatedContainers());
-      allocatedNum = containers.size();
-
-//      if (allocatedNum != totalRequest) {
-//        Thread.sleep(100);
-//      }
-//    }
-
-    return containers;
+    AllocateResponse response = amrmClient.allocate(0);
+    return response.getAllocatedContainers();
   }
 
   public void removeMatchingRequest(Container allocatedContainer) {
@@ -80,7 +81,7 @@ public class ContainerAllocator {
     // memory, but use the asked vcore count for matching, effectively disabling matching on vcore
     // count.
     Resource matchingResource = Resource.newInstance(allocatedContainer.getResource().getMemory(),
-      this.context.getContainerResource().getVirtualCores());
+      this.appContext.getContainerResource().getVirtualCores());
     List<? extends Collection<ContainerRequest>> matchingRequests = amrmClient.getMatchingRequests(
       allocatedContainer.getPriority(), allocatedContainer.getNodeId().getHost(), matchingResource);
     if (!matchingRequests.isEmpty()) {
@@ -91,8 +92,64 @@ public class ContainerAllocator {
     }
   }
 
-  public void launchContainer() {
+  public void launchContainer(Container container, MpiProcess mpiProcess)
+      throws IOException, YarnException {
+    ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
+    List<String> commands = new ArrayList<String>();
 
+    commands.add(" $JAVA_HOME/bin/java");
+    commands.add(" -Xmx" + appContext.getContainerResource().getMemory() + "m");
+    commands.add(" runtime.starter.MpichYarnWrapper");
+    commands.add("--ioServer");
+    commands.add(appContext.getIoServer());          // server name
+    commands.add("--ioServerPort");
+    commands.add(Integer.toString(appContext.getIoServerPort())); // IO server port
+
+    commands.add("--pmiServer");
+    commands.add(appContext.getPmiServer());
+    commands.add("--pmiServerPort");
+    commands.add(String.valueOf(appContext.getPmiServerPort()));
+
+    commands.addAll(getMpiSpecificCommands(mpiProcess));
+
+    ctx.setCommands(commands);
+    ctx.setLocalResources(appContext.getLocalResources());
+
+    Map<String, String> containerEnv = new HashMap<String, String>();
+    setupEnv(containerEnv);
+    ctx.setEnvironment(containerEnv);
+
+    nmClient.startContainer(container, ctx);
+  }
+
+  private List<String> getMpiSpecificCommands(MpiProcess process) {
+    List<String> commands = new ArrayList<String>();
+    commands.add("--executable");
+    commands.add(process.getApp().getExeName());
+    commands.add("--np");
+    commands.add(Integer.toString(process.getGroup().getNumProcesses()));
+    commands.add("--rank");
+    commands.add(Integer.toString(process.getRank()));
+    commands.add("--pmiid");
+    commands.add(Integer.toString(process.getPmiid()));
+    List<String> appArgs = process.getApp().getArgs();
+    if (appArgs != null & appArgs.size() > 0) {
+      commands.add("--appArgs");
+      commands.addAll(appArgs);
+    }
+    return commands;
+  }
+
+  private void setupEnv(Map<String, String> containerEnv) {
+    for (String c : appContext.getConf().getStrings(
+      YarnConfiguration.YARN_APPLICATION_CLASSPATH,
+      YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH)) {
+
+      Apps.addToEnvironment(containerEnv, ApplicationConstants.Environment.CLASSPATH.name(), c.trim(), File.pathSeparator);
+    }
+
+    Apps.addToEnvironment(containerEnv, ApplicationConstants.Environment.CLASSPATH.name(),
+      ApplicationConstants.Environment.PWD.$() + File.separator + "*", File.pathSeparator);
   }
 
   public void stop() {

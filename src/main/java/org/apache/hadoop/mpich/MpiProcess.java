@@ -77,4 +77,8 @@ public class MpiProcess {
   public void setChannel(Channel channel) {
     this.channel = channel;
   }
+
+  public ProcessApp getApp() {
+    return app;
+  }
 }

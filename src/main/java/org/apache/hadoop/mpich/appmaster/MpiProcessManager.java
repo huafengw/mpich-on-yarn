@@ -18,6 +18,8 @@
 package org.apache.hadoop.mpich.appmaster;
 
 import io.netty.channel.Channel;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.MpiProcessGroup;
 import org.apache.hadoop.mpich.ProcessWorld;
@@ -31,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MpiProcessManager implements MpiProcessWorldLauncher {
+  private static final Log LOG = LogFactory.getLog(MpiProcessManager.class);
   private Map<String, KVStore> kvStores;
   private Map<Integer, MpiProcess> pmiidToProcess;
   private Map<Channel, MpiProcess> channelToProcess;
@@ -65,7 +68,7 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
       process.setChannel(channel);
       this.channelToProcess.put(channel, process);
     } else {
-      System.err.println("Can not find process by id " + pmiid);
+      LOG.error("Can not find process by id " + pmiid);
     }
   }
 
@@ -85,11 +88,12 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
     try {
       PendingMpiProcesses pendingMpiProcesses = new PendingMpiProcesses(processWorld);
       List<Container> containers = this.containerAllocator.allocate(pendingMpiProcesses.getHostProcMap());
-      // assert containers.size == pendingMpiProcesses.pending
+      assert containers.size() == pendingMpiProcesses.remainingProcNum();
       List<MpiProcess> launched = new ArrayList<MpiProcess>();
       for (Container container : containers) {
         String host = container.getNodeId().getHost();
         MpiProcess processToLaunch = pendingMpiProcesses.getNextProcessToLaunch(host);
+        this.containerAllocator.launchContainer(container, processToLaunch);
 
         launched.add(processToLaunch);
         this.containerAllocator.removeMatchingRequest(container);
@@ -100,16 +104,5 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
       // LOG ERROR
     }
     return false;
-  }
-
-  private List<String> getMpiSpecificCommands(MpiProcess process) {
-    List<String> commands = new ArrayList<String>();
-    commands.add("--np");
-    commands.add(Integer.toString(process.getGroup().getNumProcesses()));
-    commands.add("--rank");
-    commands.add(Integer.toString(process.getRank()));
-    commands.add("--pmiid");
-    commands.add(Integer.toString(process.getPmiid()));
-    return commands;
   }
 }

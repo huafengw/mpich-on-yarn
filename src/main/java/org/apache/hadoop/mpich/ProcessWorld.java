@@ -56,19 +56,4 @@ public class ProcessWorld {
   public KVStore getKvStore() {
     return kvStore;
   }
-
-  public Map<String, Integer> getHostProcMap() {
-    Map<String, Integer> hostToProcs = new HashMap<String, Integer>();
-    for (ProcessApp app: this.getApps()) {
-      String appHost = app.getHostName();
-      if (appHost != null && !appHost.equals("")) {
-        if (hostToProcs.containsKey(appHost)) {
-          hostToProcs.put(appHost, hostToProcs.get(appHost) + app.getNumProcess());
-        } else {
-          hostToProcs.put(appHost, app.getNumProcess());
-        }
-      }
-    }
-    return hostToProcs;
-  }
 }

@@ -28,7 +28,6 @@ public class AppMasterArgumentsParser {
     OPTS.addOption("ioServerPort", true, "Port required for a socket" +
       " redirecting IO");
     OPTS.addOption("wdir", true, "Specifies the current working directory");
-    OPTS.addOption("psl", true, "Specifies the Protocol Switch Limit");
     OPTS.addOption("appArgs", true, "Specifies the User Application args");
     OPTS.getOption("appArgs").setArgs(Option.UNLIMITED_VALUES);
     OPTS.addOption("containerMem", true, "Specifies mpj containers memory");
@@ -42,7 +41,6 @@ public class AppMasterArgumentsParser {
     CommandLine cliParser = new GnuParser().parse(OPTS, args);
     int np = Integer.parseInt(cliParser.getOptionValue("np"));
     String wdir = cliParser.getOptionValue("wdir");
-    String psl = cliParser.getOptionValue("psl");
     int containerMem = Integer.parseInt(cliParser.getOptionValue
       ("containerMem", "1024"));
     int containerCores = Integer.parseInt(cliParser.getOptionValue
@@ -62,7 +60,7 @@ public class AppMasterArgumentsParser {
       debugYarn = true;
     }
 
-    return new AppMasterArguments(np, wdir, psl, containerMem, containerCores,
+    return new AppMasterArguments(np, wdir, containerMem, containerCores,
       mpjContainerPriority, ioServer, ioServerPort, appArgs, debugYarn);
   }
 }

@@ -21,14 +21,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.records.LocalResource;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
-import org.apache.hadoop.yarn.webapp.hamlet.HamletSpec;
 
 import java.util.Map;
 
 public class MpiApplicationContext {
   private Configuration conf;
   private Resource containerResource;
-  private Priority priority;
+  private Priority containerPriority;
   private Map<String, LocalResource> localResources;
 
   private String ioServer;
@@ -46,7 +45,7 @@ public class MpiApplicationContext {
     this.pmiServerPort = pmiServerPort;
     this.conf = conf;
     this.containerResource = containerResource;
-    this.priority = priority;
+    this.containerPriority = priority;
     this.localResources = localResources;
   }
 
@@ -58,8 +57,8 @@ public class MpiApplicationContext {
     return containerResource;
   }
 
-  public Priority getPriority() {
-    return priority;
+  public Priority getContainerPriority() {
+    return containerPriority;
   }
 
   public Map<String, LocalResource> getLocalResources() {
