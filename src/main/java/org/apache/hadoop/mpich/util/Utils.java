@@ -57,7 +57,7 @@ public class Utils {
     for(String kvPair : kvPairs) {
       String[] kv = kvPair.trim().split("=");
       if (kv.length != 2) {
-        //throw new Exception("Parse message " + msg + " failed");
+        throw new Exception("Parse message " + msg + " failed");
       } else {
         results.put(kv[0], kv[1]);
       }
