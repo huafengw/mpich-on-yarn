@@ -17,7 +17,15 @@
  */
 package org.apache.hadoop.mpich.util;
 
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mpich.appmaster.pmi.ClientToServerCommand;
+import org.apache.hadoop.yarn.api.records.LocalResource;
+import org.apache.hadoop.yarn.api.records.LocalResourceType;
+import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
+import org.apache.hadoop.yarn.util.ConverterUtils;
+import org.apache.hadoop.yarn.util.Records;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -26,6 +34,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Utils {
+  public static void addToLocalResources(FileSystem fs, String key, Path path,
+      Map<String, LocalResource> localResources) throws IOException {
+    LocalResource resource = Records.newRecord(LocalResource.class);
+    FileStatus destStatus = fs.getFileStatus(path);
+
+    resource.setResource(ConverterUtils.getYarnUrlFromPath(path));
+    resource.setSize(destStatus.getLen());
+    resource.setTimestamp(destStatus.getModificationTime());
+    resource.setType(LocalResourceType.FILE);
+    resource.setVisibility(LocalResourceVisibility.APPLICATION);
+
+    localResources.put(key, resource);
+  }
+
   public static int findFreePort() throws IOException {
     ServerSocket socket = new ServerSocket(0);
     try {

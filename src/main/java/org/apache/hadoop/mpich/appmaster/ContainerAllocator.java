@@ -141,15 +141,22 @@ public class ContainerAllocator {
   }
 
   private void setupEnv(Map<String, String> containerEnv) {
+    // Add AppMaster.jar location to classpath
+    // At some point we should not be required to add
+    // the hadoop specific classpaths to the env.
+    // It should be provided out of the box.
+    // For now setting all required classpaths including
+    // the classpath to "." for the application jar
+    StringBuilder classPathEnv = new StringBuilder(ApplicationConstants.Environment.CLASSPATH.$$())
+      .append(ApplicationConstants.CLASS_PATH_SEPARATOR).append("./*");
     for (String c : appContext.getConf().getStrings(
       YarnConfiguration.YARN_APPLICATION_CLASSPATH,
-      YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH)) {
-
-      Apps.addToEnvironment(containerEnv, ApplicationConstants.Environment.CLASSPATH.name(), c.trim(), File.pathSeparator);
+      YarnConfiguration.DEFAULT_YARN_CROSS_PLATFORM_APPLICATION_CLASSPATH)) {
+      classPathEnv.append(ApplicationConstants.CLASS_PATH_SEPARATOR);
+      classPathEnv.append(c.trim());
     }
 
-    Apps.addToEnvironment(containerEnv, ApplicationConstants.Environment.CLASSPATH.name(),
-      ApplicationConstants.Environment.PWD.$() + File.separator + "*", File.pathSeparator);
+    containerEnv.put("CLASSPATH", classPathEnv.toString());
   }
 
   public void stop() {

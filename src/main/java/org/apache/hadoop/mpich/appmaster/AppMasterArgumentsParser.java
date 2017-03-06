@@ -33,7 +33,7 @@ public class AppMasterArgumentsParser {
     OPTS.getOption("appArgs").setArgs(Option.UNLIMITED_VALUES);
     OPTS.addOption("containerMem", true, "Specifies mpj containers memory");
     OPTS.addOption("containerCores", true, "Specifies mpj containers v-cores");
-    OPTS.addOption("mpjContainerPriority", true, "Specifies the prioirty of" +
+    OPTS.addOption("containerPriority", true, "Specifies the prioirty of" +
       "containers running MPI processes");
     OPTS.addOption("debugYarn", false, "Specifies the debug flag");
   }
@@ -48,7 +48,7 @@ public class AppMasterArgumentsParser {
     int containerCores = Integer.parseInt(cliParser.getOptionValue
       ("containerCores", "1"));
     int mpjContainerPriority = Integer.parseInt(cliParser.getOptionValue
-      ("mpjContainerPriority", "0"));
+      ("containerPriority", "0"));
     String ioServer = cliParser.getOptionValue("ioServer");
     int ioServerPort = Integer.parseInt(cliParser.getOptionValue("ioServerPort"));
 

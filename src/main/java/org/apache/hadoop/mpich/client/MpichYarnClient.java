@@ -24,7 +24,11 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mpich.appmaster.AppMaster;
+import org.apache.hadoop.mpich.appmaster.ContainerAllocator;
+import org.apache.hadoop.mpich.util.Constants;
+import org.apache.hadoop.mpich.util.Utils;
 import org.apache.hadoop.util.ClassUtil;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
 import org.apache.hadoop.yarn.api.records.*;
@@ -41,10 +45,10 @@ import java.net.InetAddress;
 import java.util.*;
 
 public class MpichYarnClient {
+  private Log logger;
   //conf fetches information from yarn-site.xml and yarn-default.xml.
   private Configuration conf;
   private ClientArguments arguments;
-  private Log logger;
   private String localHost;
   private String appMasterJarPath;
 
@@ -134,7 +138,7 @@ public class MpichYarnClient {
     appContext.setApplicationName(arguments.getAppName());
     appContext.setAMContainerSpec(context);
     appContext.setResource(capability);
-    appContext.setQueue(arguments.getYarnQueue()); // queue
+    appContext.setQueue(arguments.getYarnQueue());
 
     Priority priority = Priority.newInstance(arguments.getAmPriority());
     appContext.setPriority(priority);
@@ -175,43 +179,44 @@ public class MpichYarnClient {
       Collections.addAll(commands, arguments.getAppArgs());
     }
 
+    commands.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
+    commands.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
+
     amContainer.setCommands(commands); //set commands
 
-    Map<String, LocalResource> localResources = prepareLocalResources();
+    FileSystem fs = FileSystem.get(conf);
+    Path source = new Path(this.appMasterJarPath);
+    String pathSuffix = arguments.getHdfsFolder() + "/AppMaster.jar";
+    Path dest = new Path(fs.getHomeDirectory(), pathSuffix);
+
+    logger.info("Uploading " + appMasterJarPath + " to: " + dest.toString());
+    fs.copyFromLocalFile(false, true, source, dest);
+
+    Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
+    Utils.addToLocalResources(fs, "AppMaster.jar", dest, localResources);
     amContainer.setLocalResources(localResources);
 
     // Setup CLASSPATH for ApplicationMaster
     // Setting up the environment
     Map<String, String> appMasterEnv = new HashMap<String, String>();
+    appMasterEnv.put(Constants.APP_JAR_LOCATION, dest.toUri().toString());
     setupAppMasterEnv(appMasterEnv);
     amContainer.setEnvironment(appMasterEnv);
 
     // Todo: log the context info
+    logger.info("==========================================================================");
+    logger.info("YARN AM launch context:");
+    logger.info("    env:");
+    for (String key: appMasterEnv.keySet()) {
+      logger.info(key + " -> " + appMasterEnv.get(key));
+    }
+    logger.info("    resources:");
+    for (String key: localResources.keySet()) {
+      logger.info(key + " -> " + localResources.get(key));
+    }
+    logger.info("==========================================================================");
 
     return amContainer;
-  }
-
-  private Map<String, LocalResource> prepareLocalResources() throws IOException {
-    // Setup local Resource for ApplicationMaster
-    LocalResource appMasterJar = Records.newRecord(LocalResource.class);
-    FileSystem fs = FileSystem.get(conf);
-    Path source = new Path(this.appMasterJarPath);
-    String pathSuffix = arguments.getHdfsFolder() + "AppMaster.jar";
-    Path dest = new Path(fs.getHomeDirectory(), pathSuffix);
-
-    if (arguments.isDebugYarn()) {
-      logger.info("Uploading " + appMasterJarPath + " to: " + dest.toString());
-    }
-
-    fs.copyFromLocalFile(false, true, source, dest);
-    FileStatus destStatus = fs.getFileStatus(dest);
-
-    appMasterJar.setResource(ConverterUtils.getYarnUrlFromPath(dest));
-    appMasterJar.setSize(destStatus.getLen());
-    appMasterJar.setTimestamp(destStatus.getModificationTime());
-    appMasterJar.setType(LocalResourceType.ARCHIVE);
-    appMasterJar.setVisibility(LocalResourceVisibility.APPLICATION);
-    return Collections.singletonMap("AppMaster.jar", appMasterJar);
   }
 
   private void verifyClusterResources(GetNewApplicationResponse response) {
@@ -231,16 +236,22 @@ public class MpichYarnClient {
   }
 
   private void setupAppMasterEnv(Map<String, String> appMasterEnv) {
+    // Add AppMaster.jar location to classpath
+    // At some point we should not be required to add
+    // the hadoop specific classpaths to the env.
+    // It should be provided out of the box.
+    // For now setting all required classpaths including
+    // the classpath to "." for the application jar
+    StringBuilder classPathEnv = new StringBuilder(ApplicationConstants.Environment.CLASSPATH.$$())
+      .append(ApplicationConstants.CLASS_PATH_SEPARATOR).append("./*");
     for (String c : conf.getStrings(
-      YarnConfiguration.YARN_APPLICATION_CLASSPATH,
-      YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH)) {
-      Apps.addToEnvironment(appMasterEnv, Environment.CLASSPATH.name(),
-        c.trim(), File.separator);
+        YarnConfiguration.YARN_APPLICATION_CLASSPATH,
+        YarnConfiguration.DEFAULT_YARN_CROSS_PLATFORM_APPLICATION_CLASSPATH)) {
+      classPathEnv.append(ApplicationConstants.CLASS_PATH_SEPARATOR);
+      classPathEnv.append(c.trim());
     }
 
-    Apps.addToEnvironment(appMasterEnv,
-      Environment.CLASSPATH.name(),
-      Environment.PWD.$() + File.separator + "*", File.separator);
+    appMasterEnv.put("CLASSPATH", classPathEnv.toString());
   }
 
   public static void main(String[] args) throws Exception {

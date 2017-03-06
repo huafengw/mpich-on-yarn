@@ -65,7 +65,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.apache.hadoop.mpich.appmaster.netty.PMIServer</mainClass>
+                            <mainClass>org.apache.hadoop.mpich.client.MpichYarnClient</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
