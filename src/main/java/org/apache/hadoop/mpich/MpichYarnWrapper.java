@@ -21,7 +21,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.apache.hadoop.mpich.appmaster.AppMasterArguments;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -40,6 +39,7 @@ public class MpichYarnWrapper {
   private String executable;
   private String wdir;
   private String rank;
+  private String pmiid;
   private String[] appArgs;
   private Options opts;
   private CommandLine cliParser;
@@ -54,6 +54,7 @@ public class MpichYarnWrapper {
     opts.addOption("executable", true, "The actual executable to launch");
     opts.addOption("np", true, "Number of Processes");
     opts.addOption("rank", true, "Rank of the process, it is set by AM");
+    opts.addOption("pmiid", true, "The unique id of the process");
     opts.addOption("pmiServer", true, "PMI Server hostname");
     opts.addOption("pmiServerPort", true, "Port required by NIODev to share" +
       "wireup information");
@@ -74,6 +75,7 @@ public class MpichYarnWrapper {
       executable = cliParser.getOptionValue("executable");
       wdir = cliParser.getOptionValue("wdir");
       rank = cliParser.getOptionValue("rank");
+      pmiid = cliParser.getOptionValue("pmiid");
 
       if (cliParser.hasOption("appArgs")) {
         appArgs = cliParser.getOptionValues("appArgs");
@@ -84,58 +86,23 @@ public class MpichYarnWrapper {
   }
 
   public void run() {
-
     try {
       clientSock = new Socket(ioServer, ioServerPort);
+      System.setOut(new PrintStream(clientSock.getOutputStream(), true));
+      System.setErr(new PrintStream(clientSock.getOutputStream(), true));
+      InetAddress localaddr = InetAddress.getLocalHost();
+      String hostName = localaddr.getHostName();
+
+      System.out.println("Starting process <" + rank + "> on <" + hostName + ">");
+
+      System.out.println("EXIT");//Stopping IOThread
+      clientSock.close();
     } catch (UnknownHostException exp) {
       System.err.println("Unknown Host Exception, Host not found");
       exp.printStackTrace();
     } catch (IOException exp) {
       exp.printStackTrace();
     }
-
-    // Redirecting Output Stream
-    try {
-      System.setOut(new PrintStream(clientSock.getOutputStream(), true));
-      System.setErr(new PrintStream(clientSock.getOutputStream(), true));
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-
-    try {
-      String[] arvs = new String[3];
-
-      if (appArgs != null) {
-        arvs = new String[1 + appArgs.length];
-      }
-      arvs[0] = rank;
-
-      if (appArgs != null) {
-        for (int i = 0; i < appArgs.length; i++) {
-          arvs[3 + i] = appArgs[i];
-        }
-      }
-
-      InetAddress localaddr = InetAddress.getLocalHost();
-      String hostName = localaddr.getHostName();
-
-      System.out.println("Starting process <" + rank + "> on <" + hostName + ">");
-
-
-
-      System.out.println("Stopping process <" + rank + "> on <" + hostName + ">");
-
-      System.out.println("EXIT");//Stopping IOThread
-
-      try {
-        clientSock.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    } catch (Exception ioe) {
-      ioe.printStackTrace();
-    }
-
   }
 
   public static void main(String args[]) throws Exception {

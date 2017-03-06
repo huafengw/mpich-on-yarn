@@ -26,7 +26,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.MpiProcessGroup;
 import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
-import org.apache.hadoop.mpich.appmaster.MpiProcessWorldLauncher;
 import org.apache.hadoop.mpich.util.KVStoreFactory;
 
 import java.util.ArrayList;

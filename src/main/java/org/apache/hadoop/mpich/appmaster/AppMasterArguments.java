@@ -19,6 +19,7 @@ package org.apache.hadoop.mpich.appmaster;
 
 public class AppMasterArguments {
   private int np;
+  private String executable;
   private String wdir;
   private int containerMem;
   private int containerCores;
@@ -27,12 +28,12 @@ public class AppMasterArguments {
   private int ioServerPort;
   private String[] appArgs;
   private boolean debugYarn;
-  private String executable;
 
-  public AppMasterArguments(int np, String wdir, int containerMem,
+  public AppMasterArguments(int np, String executable, String wdir, int containerMem,
       int containerCores, int mpjContainerPriority, String ioServer,
       int ioServerPort, String[] appArgs, boolean debugYarn) {
     this.np = np;
+    this.executable = executable;
     this.wdir = wdir;
     this.containerMem = containerMem;
     this.containerCores = containerCores;

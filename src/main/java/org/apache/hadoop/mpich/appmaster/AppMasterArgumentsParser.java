@@ -24,6 +24,7 @@ public class AppMasterArgumentsParser {
 
   static {
     OPTS.addOption("np", true, "Number of Processes");
+    OPTS.addOption("exec", true, "The mpich executable file to run");
     OPTS.addOption("ioServer", true, "Hostname required for Server Socket");
     OPTS.addOption("ioServerPort", true, "Port required for a socket" +
       " redirecting IO");
@@ -40,6 +41,7 @@ public class AppMasterArgumentsParser {
   public static AppMasterArguments parse(String[] args) throws ParseException {
     CommandLine cliParser = new GnuParser().parse(OPTS, args);
     int np = Integer.parseInt(cliParser.getOptionValue("np"));
+    String executable = cliParser.getOptionValue("exec");
     String wdir = cliParser.getOptionValue("wdir");
     int containerMem = Integer.parseInt(cliParser.getOptionValue
       ("containerMem", "1024"));
@@ -60,7 +62,7 @@ public class AppMasterArgumentsParser {
       debugYarn = true;
     }
 
-    return new AppMasterArguments(np, wdir, containerMem, containerCores,
+    return new AppMasterArguments(np, executable, wdir, containerMem, containerCores,
       mpjContainerPriority, ioServer, ioServerPort, appArgs, debugYarn);
   }
 }
