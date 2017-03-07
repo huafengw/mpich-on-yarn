@@ -22,7 +22,6 @@ import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.MpiProcessGroup;
 import org.apache.hadoop.mpich.ProcessWorld;
 import org.apache.hadoop.mpich.appmaster.MpiProcessManager;
-import org.apache.hadoop.mpich.appmaster.MpiProcessWorldLauncher;
 import org.apache.hadoop.mpich.util.KVPair;
 import org.apache.hadoop.mpich.util.KVStore;
 import org.apache.hadoop.mpich.util.PMIResponseBuilder;
@@ -216,14 +215,14 @@ public class PMIClientCommandHandler {
     MpiProcess process = this.manager.getProcessByChannel(this.channel);
     if (process != null) {
       MpiProcessGroup group = process.getGroup();
-      Integer numInBarrier = group.getnInBarrier().incrementAndGet();
+      Integer numInBarrier = group.getNumInBarrier().incrementAndGet();
       if (numInBarrier == group.getNumProcesses()) {
         String response = new PMIResponseBuilder().append("cmd", "barrier_out").build();
         for (MpiProcess proc : group.getProcesses()) {
           proc.getChannel().write(response);
           proc.getChannel().flush();
         }
-        group.getnInBarrier().set(0);
+        group.getNumInBarrier().set(0);
       }
     }
     return EMPTY_RESPONSE;

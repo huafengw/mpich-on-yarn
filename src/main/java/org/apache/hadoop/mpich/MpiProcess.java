@@ -27,47 +27,28 @@ public class MpiProcess {
   private Channel channel;
   private MpiProcessGroup group;
 
-  public MpiProcess(int rank, int pmiid, String host) {
-    this(rank, pmiid, host, null);
-  }
-
-  public MpiProcess(int rank, int pmiid, String host, ProcessApp app) {
+  public MpiProcess(int rank, int pmiid, String host, ProcessApp app, MpiProcessGroup group) {
     this.rank = rank;
     this.pmiid = pmiid;
     this.host = host;
     this.app = app;
+    this.group = group;
   }
 
   public String getHost() {
     return host;
   }
 
-  public void setHost(String host) {
-    this.host = host;
-  }
-
   public int getRank() {
     return rank;
-  }
-
-  public void setRank(int rank) {
-    this.rank = rank;
   }
 
   public int getPmiid() {
     return pmiid;
   }
 
-  public void setPmiid(int pmiid) {
-    this.pmiid = pmiid;
-  }
-
   public MpiProcessGroup getGroup() {
     return group;
-  }
-
-  public void setGroup(MpiProcessGroup group) {
-    this.group = group;
   }
 
   public Channel getChannel() {

@@ -61,25 +61,8 @@ public class PMIServer {
   }
 
   public void stop() throws InterruptedException {
-    channel.close().sync();
+    channel.closeFuture().sync();
     workerGroup.shutdownGracefully();
     bossGroup.shutdownGracefully();
-  }
-
-  private void waitUntilClose() throws InterruptedException {
-    this.channel.closeFuture().sync();
-  }
-
-  public static void main(String[] args) throws Exception {
-    List<MpiProcess> processes = new ArrayList<MpiProcess>();
-    processes.add(new MpiProcess(0, 0, "host1"));
-    processes.add(new MpiProcess(1, 1, "host2"));
-    MpiProcessGroup group = new MpiProcessGroup(processes, KVStoreFactory.newKVStore());
-    MpiProcessManager manager = new MpiProcessManager();
-    manager.addMpiProcessGroup(group);
-    PMIServer server = new PMIServer(manager, 0);
-    server.start();
-    System.out.println(server.getPortNum());
-    server.waitUntilClose();
   }
 }

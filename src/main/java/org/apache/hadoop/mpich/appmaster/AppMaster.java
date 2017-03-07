@@ -121,9 +121,6 @@ public class AppMaster {
   }
 
   public static void main(String[] args) throws Exception {
-    for (String x : args) {
-      System.out.println(x);
-    }
     AppMasterArguments arguments = AppMasterArgumentsParser.parse(args);
     AppMaster am = new AppMaster(arguments);
     am.run();

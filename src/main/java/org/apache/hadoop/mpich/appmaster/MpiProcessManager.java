@@ -24,10 +24,8 @@ import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.MpiProcessGroup;
 import org.apache.hadoop.mpich.ProcessWorld;
 import org.apache.hadoop.mpich.util.KVStore;
-import org.apache.hadoop.mpich.util.PendingMpiProcesses;
 import org.apache.hadoop.yarn.api.records.Container;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,11 +36,6 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
   private Map<Integer, MpiProcess> pmiidToProcess;
   private Map<Channel, MpiProcess> channelToProcess;
   private ContainerAllocator containerAllocator;
-
-  // For test
-  public MpiProcessManager() {
-    this(null);
-  }
 
   public MpiProcessManager(ContainerAllocator containerAllocator) {
     this.kvStores = new HashMap<String, KVStore>();
@@ -87,16 +80,14 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
   public synchronized boolean launch(ProcessWorld processWorld) {
     LOG.info("Launching ProcessWorld:\n" + processWorld.toString());
     try {
-      PendingMpiProcesses pendingMpiProcesses = new PendingMpiProcesses(processWorld);
-      List<Container> containers = this.containerAllocator.allocate(pendingMpiProcesses.getHostProcMap());
-
+      MpiProcessGroup group = new MpiProcessGroup(processWorld, processWorld.getKvStore());
+      List<Container> containers = this.containerAllocator.allocate(group.getHostProcMap());
       LOG.info("Allocated " + containers.size() + " containers");
-      MpiProcessGroup group = new MpiProcessGroup(processWorld.getKvStore());
+
       for (Container container : containers) {
         String host = container.getNodeId().getHost();
-        MpiProcess processToLaunch = pendingMpiProcesses.getNextProcessToLaunch(host);
+        MpiProcess processToLaunch = group.getNextProcessToLaunch(host);
         if (processToLaunch != null) {
-          MpiProcessGroup.addProcessToGroup(processToLaunch, group);
           this.containerAllocator.launchContainer(container, processToLaunch);
           this.containerAllocator.removeMatchingRequest(container);
         } else {

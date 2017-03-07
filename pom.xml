@@ -65,7 +65,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.apache.hadoop.mpich.client.MpichYarnClient</mainClass>
+                            <mainClass>org.apache.hadoop.mpich.client.Client</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

@@ -32,7 +32,7 @@ public class KillYarnApp extends Thread {
 
   @Override
   public void run() {
-    if (MpichYarnClient.isRunning) {
+    if (Client.isRunning) {
       try {
           System.out.println("Killing Application Forcefully");
           appManager.killApplication(appId); 

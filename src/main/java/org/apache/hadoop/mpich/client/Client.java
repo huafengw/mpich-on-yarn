@@ -20,31 +20,25 @@ package org.apache.hadoop.mpich.client;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mpich.appmaster.AppMaster;
-import org.apache.hadoop.mpich.appmaster.ContainerAllocator;
 import org.apache.hadoop.mpich.util.Constants;
 import org.apache.hadoop.mpich.util.Utils;
 import org.apache.hadoop.util.ClassUtil;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
 import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.client.api.YarnClientApplication;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.hadoop.yarn.util.Apps;
-import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.*;
 
-public class MpichYarnClient {
+public class Client {
   private Log logger;
   //conf fetches information from yarn-site.xml and yarn-default.xml.
   private Configuration conf;
@@ -55,8 +49,8 @@ public class MpichYarnClient {
   public static boolean isRunning = false;
   private IOMessageHandler ioMessageHandler = null;
 
-  public MpichYarnClient(ClientArguments arguments) {
-    this.logger = LogFactory.getLog(MpichYarnClient.class);
+  public Client(ClientArguments arguments) {
+    this.logger = LogFactory.getLog(Client.class);
     this.conf = new YarnConfiguration();
     this.arguments = arguments;
     this.appMasterJarPath = ClassUtil.findContainingJar(AppMaster.class);
@@ -203,16 +197,15 @@ public class MpichYarnClient {
     setupAppMasterEnv(appMasterEnv);
     amContainer.setEnvironment(appMasterEnv);
 
-    // Todo: log the context info
     logger.info("==========================================================================");
     logger.info("YARN AM launch context:");
     logger.info("    env:");
     for (String key: appMasterEnv.keySet()) {
-      logger.info(key + " -> " + appMasterEnv.get(key));
+      logger.info("     " + key + " -> " + appMasterEnv.get(key));
     }
     logger.info("    resources:");
     for (String key: localResources.keySet()) {
-      logger.info(key + " -> " + localResources.get(key));
+      logger.info("     " + key + " -> " + localResources.get(key));
     }
     logger.info("==========================================================================");
 
@@ -256,7 +249,7 @@ public class MpichYarnClient {
 
   public static void main(String[] args) throws Exception {
     ClientArguments arguments = ClientArgumentsParser.parse(args);
-    MpichYarnClient client = new MpichYarnClient(arguments);
+    Client client = new Client(arguments);
     client.run();
   }
 }

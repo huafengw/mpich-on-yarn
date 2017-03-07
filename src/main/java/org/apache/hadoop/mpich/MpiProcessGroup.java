@@ -17,62 +17,90 @@
  */
 package org.apache.hadoop.mpich;
 
+import org.apache.hadoop.mpich.util.Constants;
 import org.apache.hadoop.mpich.util.KVStore;
+import org.apache.hadoop.mpich.util.UniqueId;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MpiProcessGroup {
-  private int groupId;
-  private AtomicInteger nInBarrier;
-  private int numProcesses;
-  private Map<Integer, MpiProcess> processes;
-  private KVStore kvStore;
+  private final ProcessWorld processWorld;
+  private final KVStore kvStore;
+//  private int groupId;
+  private AtomicInteger numInBarrier;
+  private Map<Integer, MpiProcess> idToProcesses;
+  private Map<String, Queue<MpiProcess>> remainingProcesses;
+  private int rank = 0;
 
-  public MpiProcessGroup(KVStore kvStore) {
-    this(new ArrayList<MpiProcess>(), kvStore);
-  }
-
-  public MpiProcessGroup(List<MpiProcess> processes, KVStore kvStore) {
-    this.nInBarrier = new AtomicInteger(0);
-    this.numProcesses = processes.size();
-    this.processes = new HashMap<Integer, MpiProcess>();
-    for (MpiProcess process: processes) {
-      process.setGroup(this);
-      this.processes.put(process.getPmiid(), process);
-    }
+  public MpiProcessGroup(ProcessWorld processWorld, KVStore kvStore) {
+    this.processWorld = processWorld;
+    this.numInBarrier = new AtomicInteger(0);
+    this.remainingProcesses = new HashMap<String, Queue<MpiProcess>>();
+    this.idToProcesses = new HashMap<Integer, MpiProcess>();
     this.kvStore = kvStore;
+    initPendingProcessQueue();
   }
 
-  public synchronized void addProcess(MpiProcess process) {
-    this.processes.put(process.getPmiid(), process);
-  }
-
-  public MpiProcess getProcessById(int pmiid) {
-    return processes.get(pmiid);
+  private void initPendingProcessQueue() {
+    for (ProcessApp app: this.processWorld.getApps()) {
+      Queue<MpiProcess> processesQueue = this.remainingProcesses.get(app.getHostName());
+      if (processesQueue == null) {
+        processesQueue = new ConcurrentLinkedQueue<MpiProcess>();
+        this.remainingProcesses.put(app.getHostName(), processesQueue);
+      }
+      for (int i = 0; i < app.getNumProcess(); i++) {
+        MpiProcess process = new MpiProcess(rank, UniqueId.nextId(), app.getHostName(), app, this);
+        processesQueue.add(process);
+        this.idToProcesses.put(process.getPmiid(), process);
+        this.rank += 1;
+      }
+    }
   }
 
   public int getNumProcesses() {
-    return numProcesses;
+    return this.rank;
   }
 
   public KVStore getKvStore() {
     return kvStore;
   }
 
-  public AtomicInteger getnInBarrier() {
-    return nInBarrier;
+  public AtomicInteger getNumInBarrier() {
+    return numInBarrier;
   }
 
   public List<MpiProcess> getProcesses() {
-    return new ArrayList<MpiProcess>(this.processes.values());
+    return new ArrayList<MpiProcess>(this.idToProcesses.values());
   }
 
-  public static void addProcessToGroup(MpiProcess process, MpiProcessGroup group) {
-    process.setGroup(group);
-    group.addProcess(process);
+  public int pendingProcNum() {
+    int remainingNum = 0;
+    for (Queue<MpiProcess> queue : this.remainingProcesses.values()) {
+      remainingNum += queue.size();
+    }
+    return remainingNum;
+  }
+
+  public Map<String, Integer> getHostProcMap() {
+    Map<String, Integer> hostToProcs = new HashMap<String, Integer>();
+    for (String host : this.remainingProcesses.keySet()) {
+      hostToProcs.put(host, this.remainingProcesses.get(host).size());
+    }
+    return hostToProcs;
+  }
+
+  public MpiProcess getNextProcessToLaunch(String host) {
+    Queue<MpiProcess> mpiProcesses = this.remainingProcesses.get(host);
+    if (mpiProcesses != null && mpiProcesses.size() > 0) {
+      return mpiProcesses.poll();
+    } else {
+      mpiProcesses = this.remainingProcesses.get(Constants.ANY_HOST);
+      if (mpiProcesses != null && mpiProcesses.size() > 0) {
+        return mpiProcesses.poll();
+      }
+    }
+    return null;
   }
 }
