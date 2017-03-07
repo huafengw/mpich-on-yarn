@@ -32,6 +32,10 @@ public class MpiProcessGroup {
   private Map<Integer, MpiProcess> processes;
   private KVStore kvStore;
 
+  public MpiProcessGroup(KVStore kvStore) {
+    this(new ArrayList<MpiProcess>(), kvStore);
+  }
+
   public MpiProcessGroup(List<MpiProcess> processes, KVStore kvStore) {
     this.nInBarrier = new AtomicInteger(0);
     this.numProcesses = processes.size();
@@ -41,6 +45,10 @@ public class MpiProcessGroup {
       this.processes.put(process.getPmiid(), process);
     }
     this.kvStore = kvStore;
+  }
+
+  public synchronized void addProcess(MpiProcess process) {
+    this.processes.put(process.getPmiid(), process);
   }
 
   public MpiProcess getProcessById(int pmiid) {
@@ -61,5 +69,10 @@ public class MpiProcessGroup {
 
   public List<MpiProcess> getProcesses() {
     return new ArrayList<MpiProcess>(this.processes.values());
+  }
+
+  public static void addProcessToGroup(MpiProcess process, MpiProcessGroup group) {
+    process.setGroup(group);
+    group.addProcess(process);
   }
 }

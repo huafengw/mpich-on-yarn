@@ -56,4 +56,15 @@ public class ProcessWorld {
   public KVStore getKvStore() {
     return kvStore;
   }
+
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("ProcessWorld info:\n");
+    builder.append("     KVStore name: " + kvStore.getName() + "\n");
+    builder.append("     Embedded " + apps.size() + " ProcessApp:" + "\n");
+    for (ProcessApp app: apps) {
+      builder.append(app.toString());
+    }
+    return builder.toString();
+  }
 }

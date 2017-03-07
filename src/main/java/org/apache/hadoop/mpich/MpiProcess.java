@@ -81,4 +81,12 @@ public class MpiProcess {
   public ProcessApp getApp() {
     return app;
   }
+
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("MpiProcess info:\n");
+    builder.append("     Rank: " + rank + "\n");
+    builder.append("     Pmiid: " + rank + "\n");
+    return builder.toString();
+  }
 }

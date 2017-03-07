@@ -113,4 +113,13 @@ public class ProcessApp {
   public void setNumProcess(int numProcess) {
     this.numProcess = numProcess;
   }
+
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("ProcessApp info:\n");
+    builder.append("     Excutable to run: " + exeName + "\n");
+    builder.append("     Hosts to run: " + hostName + "\n");
+    builder.append("     Number of processes: " + numProcess + "\n");
+    return builder.toString();
+  }
 }

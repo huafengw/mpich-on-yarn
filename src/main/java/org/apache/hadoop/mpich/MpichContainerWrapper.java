@@ -21,6 +21,8 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -28,8 +30,8 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-public class MpichYarnWrapper {
-
+public class MpichContainerWrapper {
+  private static final Log LOG = LogFactory.getLog(MpichContainerWrapper.class);
   private Socket clientSock;
   private int np;
   private String ioServer;
@@ -44,7 +46,8 @@ public class MpichYarnWrapper {
   private Options opts;
   private CommandLine cliParser;
 
-  public MpichYarnWrapper() {
+  public MpichContainerWrapper() {
+    LOG.info("========");
     opts = new Options();
 
     opts.addOption("ioServer", true, "Hostname where the stdout and stderr " +
@@ -90,6 +93,7 @@ public class MpichYarnWrapper {
       clientSock = new Socket(ioServer, ioServerPort);
       System.setOut(new PrintStream(clientSock.getOutputStream(), true));
       System.setErr(new PrintStream(clientSock.getOutputStream(), true));
+
       InetAddress localaddr = InetAddress.getLocalHost();
       String hostName = localaddr.getHostName();
 
@@ -106,7 +110,7 @@ public class MpichYarnWrapper {
   }
 
   public static void main(String args[]) throws Exception {
-    MpichYarnWrapper wrapper = new MpichYarnWrapper();
+    MpichContainerWrapper wrapper = new MpichContainerWrapper();
     wrapper.init(args);
     wrapper.run();
   }

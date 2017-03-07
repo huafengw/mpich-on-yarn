@@ -85,28 +85,28 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
   }
 
   public synchronized boolean launch(ProcessWorld processWorld) {
+    LOG.info("Launching ProcessWorld:\n" + processWorld.toString());
     try {
       PendingMpiProcesses pendingMpiProcesses = new PendingMpiProcesses(processWorld);
       List<Container> containers = this.containerAllocator.allocate(pendingMpiProcesses.getHostProcMap());
-      assert containers.size() == pendingMpiProcesses.remainingProcNum();
 
-      List<MpiProcess> launched = new ArrayList<MpiProcess>();
+      LOG.info("Allocated " + containers.size() + " containers");
+      MpiProcessGroup group = new MpiProcessGroup(processWorld.getKvStore());
       for (Container container : containers) {
         String host = container.getNodeId().getHost();
         MpiProcess processToLaunch = pendingMpiProcesses.getNextProcessToLaunch(host);
         if (processToLaunch != null) {
+          MpiProcessGroup.addProcessToGroup(processToLaunch, group);
           this.containerAllocator.launchContainer(container, processToLaunch);
-          launched.add(processToLaunch);
           this.containerAllocator.removeMatchingRequest(container);
         } else {
           LOG.error("Failed to find matching process on host " + host);
         }
       }
-      MpiProcessGroup group = new MpiProcessGroup(launched, processWorld.getKvStore());
       this.addMpiProcessGroup(group);
       return true;
     } catch (Exception e) {
-      // LOG ERROR
+      e.printStackTrace();
     }
     return false;
   }

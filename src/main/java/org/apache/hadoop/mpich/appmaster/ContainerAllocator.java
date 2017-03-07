@@ -20,6 +20,7 @@ package org.apache.hadoop.mpich.appmaster;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mpich.MpiProcess;
+import org.apache.hadoop.mpich.MpichContainerWrapper;
 import org.apache.hadoop.mpich.util.Constants;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
@@ -31,10 +32,8 @@ import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest;
 import org.apache.hadoop.yarn.client.api.NMClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
-import org.apache.hadoop.yarn.util.Apps;
 import org.apache.hadoop.yarn.util.Records;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
@@ -47,18 +46,18 @@ public class ContainerAllocator {
   public ContainerAllocator(MpiApplicationContext context, AMRMClient<ContainerRequest> amrmClient) {
     this.appContext = context;
     this.amrmClient = amrmClient;
-    this.nmClient = NMClient.createNMClient();
-  }
 
-  public void init() {
+    this.nmClient = NMClient.createNMClient();
     this.nmClient.init(appContext.getConf());
     this.nmClient.start();
   }
 
   public List<Container> allocate(Map<String, Integer> hostToContainerCount)
       throws IOException, YarnException, InterruptedException {
+    int containerNum = 0;
     for (String host : hostToContainerCount.keySet()) {
       Integer num = hostToContainerCount.get(host);
+      LOG.info("Requesting " + num + " containers on host " + host);
       for (int i = 0; i < num; i++) {
         String[] hosts = null;
         if (!host.equals(Constants.ANY_HOST)) {
@@ -68,11 +67,21 @@ public class ContainerAllocator {
         ContainerRequest request = new ContainerRequest(appContext.getContainerResource(),
           hosts, null, appContext.getContainerPriority());
         this.amrmClient.addContainerRequest(request);
+        containerNum += 1;
       }
     }
 
-    AllocateResponse response = amrmClient.allocate(0);
-    return response.getAllocatedContainers();
+    List<Container> allocated = new ArrayList<Container>();
+    while (allocated.size() < containerNum) {
+      AllocateResponse response = amrmClient.allocate(0);
+      allocated.addAll(response.getAllocatedContainers());
+
+      if (allocated.size() != containerNum) {
+        Thread.sleep(100);
+      }
+    }
+
+    return allocated;
   }
 
   public void removeMatchingRequest(Container allocatedContainer) {
@@ -94,12 +103,14 @@ public class ContainerAllocator {
 
   public void launchContainer(Container container, MpiProcess mpiProcess)
       throws IOException, YarnException {
+    LOG.info("Container " + container.getId() + " will launch MpiProcess:\n");
+    LOG.info(mpiProcess.toString());
     ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
     List<String> commands = new ArrayList<String>();
 
-    commands.add(" $JAVA_HOME/bin/java");
-    commands.add(" -Xmx" + appContext.getContainerResource().getMemory() + "m");
-    commands.add(" runtime.starter.MpichYarnWrapper");
+    commands.add("$JAVA_HOME/bin/java");
+    commands.add("-Xmx" + appContext.getContainerResource().getMemory() + "m");
+    commands.add(MpichContainerWrapper.class.getName());
     commands.add("--ioServer");
     commands.add(appContext.getIoServer());          // server name
     commands.add("--ioServerPort");
@@ -111,6 +122,9 @@ public class ContainerAllocator {
     commands.add(String.valueOf(appContext.getPmiServerPort()));
 
     commands.addAll(getMpiSpecificCommands(mpiProcess));
+
+    commands.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
+    commands.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");
 
     ctx.setCommands(commands);
     ctx.setLocalResources(appContext.getLocalResources());

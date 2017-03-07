@@ -65,6 +65,7 @@ public class AppMaster {
       exp.printStackTrace();
     }
 
+    Thread.sleep(1000 * 60);
 //    while (allocatedContainers < appArguments.getNp()) {
 //      AllocateResponse response = rmClient.allocate(0);
 //      mpiContainers.addAll(response.getAllocatedContainers());
@@ -98,6 +99,7 @@ public class AppMaster {
 //    }
     // Un-register with ResourceManager
     this.amrmClientWrapper.unregister();
+    this.pmiServer.stop();
     //shutDown AppMaster IO
     System.out.println("EXIT");
   }
@@ -113,6 +115,7 @@ public class AppMaster {
     } else {
       processApp.setArgNum(0);
     }
+    processWorld.addProcessApp(processApp);
 
     return processWorld;
   }
