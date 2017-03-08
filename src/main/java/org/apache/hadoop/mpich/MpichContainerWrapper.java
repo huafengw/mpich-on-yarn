@@ -24,16 +24,19 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.IOException;
 import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 public class MpichContainerWrapper {
   private static final Log LOG = LogFactory.getLog(MpichContainerWrapper.class);
   private Socket clientSock;
-  private int np;
+  private String np;
   private String ioServer;
   private int ioServerPort;
   private String pmiServer;
@@ -47,14 +50,13 @@ public class MpichContainerWrapper {
   private CommandLine cliParser;
 
   public MpichContainerWrapper() {
-    LOG.info("========");
     opts = new Options();
 
     opts.addOption("ioServer", true, "Hostname where the stdout and stderr " +
       "will be redirected");
     opts.addOption("ioServerPort", true, "Port required for a socket" +
       " redirecting IO");
-    opts.addOption("executable", true, "The actual executable to launch");
+    opts.addOption("exec", true, "The actual executable to launch");
     opts.addOption("np", true, "Number of Processes");
     opts.addOption("rank", true, "Rank of the process, it is set by AM");
     opts.addOption("pmiid", true, "The unique id of the process");
@@ -69,13 +71,13 @@ public class MpichContainerWrapper {
     try {
       cliParser = new GnuParser().parse(opts, args);
 
-      np = Integer.parseInt(cliParser.getOptionValue("np"));
+      np = cliParser.getOptionValue("np");
       ioServer = cliParser.getOptionValue("ioServer");
       ioServerPort = Integer.parseInt(cliParser.getOptionValue
         ("ioServerPort"));
       pmiServer = cliParser.getOptionValue("pmiServer");
       pmiServerPort = cliParser.getOptionValue("pmiServerPort");
-      executable = cliParser.getOptionValue("executable");
+      executable = cliParser.getOptionValue("exec");
       wdir = cliParser.getOptionValue("wdir");
       rank = cliParser.getOptionValue("rank");
       pmiid = cliParser.getOptionValue("pmiid");
@@ -94,18 +96,39 @@ public class MpichContainerWrapper {
       System.setOut(new PrintStream(clientSock.getOutputStream(), true));
       System.setErr(new PrintStream(clientSock.getOutputStream(), true));
 
-      InetAddress localaddr = InetAddress.getLocalHost();
-      String hostName = localaddr.getHostName();
-
+      String hostName = InetAddress.getLocalHost().getHostName();
       System.out.println("Starting process <" + rank + "> on <" + hostName + ">");
 
+      List<String> commands = new ArrayList<String>();
+      commands.add(executable);
+      if (appArgs != null && appArgs.length > 0) {
+        commands.addAll(Arrays.asList(appArgs));
+      }
+
+      ProcessBuilder processBuilder = new ProcessBuilder(commands);
+      processBuilder.redirectErrorStream(true);
+      processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+
+      Map<String, String> evns = processBuilder.environment();
+      evns.put("PMI_RANK", rank);
+      evns.put("PMI_SIZE", np);
+      evns.put("PMI_ID", pmiid);
+      evns.put("PMI_PORT", pmiServer + ":" + pmiServerPort);
+
+      LOG.info("Starting process:");
+      for (String cmd: commands) {
+        LOG.info(cmd + "\n");
+      }
+
+      Process process = processBuilder.start();
+      System.out.println(process.waitFor());
       System.out.println("EXIT");//Stopping IOThread
       clientSock.close();
     } catch (UnknownHostException exp) {
       System.err.println("Unknown Host Exception, Host not found");
       exp.printStackTrace();
-    } catch (IOException exp) {
-      exp.printStackTrace();
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 

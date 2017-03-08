@@ -22,6 +22,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mpich.util.Constants;
+import org.apache.hadoop.mpich.util.Utils;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
 import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
@@ -111,19 +112,9 @@ public class AMRMClientWrapper {
     assert (envs.containsKey(Constants.APP_JAR_LOCATION));
     String hdfsAppJarLocation = envs.get(Constants.APP_JAR_LOCATION);
     Path wrapperDest = new Path(hdfsAppJarLocation);
-    FileStatus destStatus = fs.getFileStatus(wrapperDest);
 
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
-    LocalResource wrapperJar = Records.newRecord(LocalResource.class);
-
-    wrapperJar.setResource(ConverterUtils.getYarnUrlFromPath(wrapperDest));
-    wrapperJar.setSize(destStatus.getLen());
-    wrapperJar.setTimestamp(destStatus.getModificationTime());
-    wrapperJar.setType(LocalResourceType.FILE);
-    wrapperJar.setVisibility(LocalResourceVisibility.APPLICATION);
-
-    // Todo: extract the local resource key string
-    localResources.put("mpj-yarn-wrapper.jar", wrapperJar);
+    Utils.addToLocalResources(fs, "yarn-wrapper.jar", wrapperDest, localResources);
     return localResources;
   }
 

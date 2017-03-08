@@ -138,7 +138,7 @@ public class ContainerAllocator {
 
   private List<String> getMpiSpecificCommands(MpiProcess process) {
     List<String> commands = new ArrayList<String>();
-    commands.add("--executable");
+    commands.add("--exec");
     commands.add(process.getApp().getExeName());
     commands.add("--np");
     commands.add(Integer.toString(process.getGroup().getNumProcesses()));
