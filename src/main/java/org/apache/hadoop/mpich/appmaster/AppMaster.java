@@ -65,43 +65,17 @@ public class AppMaster {
       exp.printStackTrace();
     }
 
-    Thread.sleep(1000 * 60);
-//    while (allocatedContainers < appArguments.getNp()) {
-//      AllocateResponse response = rmClient.allocate(0);
-//      mpiContainers.addAll(response.getAllocatedContainers());
-//      allocatedContainers = mpiContainers.size();
-//
-//      if (allocatedContainers != appArguments.getNp()) {
-//        Thread.sleep(100);
-//      }
-//    }
+    while (!this.mpiProcessManager.allAppFinished()) {
+      Thread.sleep(200);
+    }
 
-//    while (completedContainers < appArguments.getNp()) {
-//      // argument to allocate() is the progress indicator
-//      AllocateResponse response = rmClient.allocate(completedContainers / appArguments.getNp());
-//
-//      for (ContainerStatus status : response.getCompletedContainersStatuses()) {
-//        if (appArguments.isDebugYarn()) {
-//          System.out.println("\n[MPJAppMaster]: Container Id - " +
-//            status.getContainerId());
-//          System.out.println("[MPJAppMaster]: Container State - " +
-//            status.getState().toString());
-//          System.out.println("[MPJAppMaster]: Container Diagnostics - " +
-//            status.getDiagnostics());
-//
-//        }
-//        ++completedContainers;
-//      }
-//
-//      if (completedContainers != appArguments.getNp()) {
-//        Thread.sleep(100);
-//      }
-//    }
     // Un-register with ResourceManager
     this.amrmClientWrapper.unregister();
+    this.mpiProcessManager.close();
     this.pmiServer.stop();
-    //shutDown AppMaster IO
+    System.out.println("Application finished");
     System.out.println("EXIT");
+    this.ioServerSock.close();
   }
 
   private ProcessWorld getProcessWorldAccordingArgs(AppMasterArguments arguments) {

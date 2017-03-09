@@ -21,8 +21,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mpich.ProcessApp;
 import org.apache.hadoop.mpich.ProcessWorld;
-import org.apache.hadoop.mpich.util.KVStore;
-import org.apache.hadoop.mpich.util.KVStoreFactory;
 
 public class SpawnCommandParser {
   private static Log logger = LogFactory.getLog(SpawnCommandParser.class);
@@ -36,7 +34,6 @@ public class SpawnCommandParser {
   private String curInfoKey = null;
 
   public void process(String msg) {
-//    logger.info("processing msg: " + msg);
     if (msg.trim().equals("endcmd")) {
       this.spawnSoFar += 1;
       this.processWorld.addProcessApp(currentApp);

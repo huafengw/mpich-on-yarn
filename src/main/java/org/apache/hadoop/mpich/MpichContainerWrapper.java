@@ -103,7 +103,7 @@ public class MpichContainerWrapper {
       System.setErr(new PrintStream(clientSock.getOutputStream(), true));
 
       String hostName = InetAddress.getLocalHost().getHostName();
-      System.out.println("Starting process <" + rank + "> on <" + hostName + ">");
+      System.out.println("Starting process " + executable + " on " + hostName);
 
       List<String> commands = new ArrayList<String>();
       commands.add(executable);
@@ -131,7 +131,7 @@ public class MpichContainerWrapper {
       }
 
       Process process = processBuilder.start();
-      System.out.println(process.waitFor());
+      System.out.println("Process exit with value " + process.waitFor());
       System.out.println("EXIT");//Stopping IOThread
       clientSock.close();
     } catch (UnknownHostException exp) {

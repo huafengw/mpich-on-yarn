@@ -89,33 +89,6 @@ public class Client {
     this.ioMessageHandler.acceptAll();
     // wait for all IO Threads to complete
     this.ioMessageHandler.join();
-    isRunning = true;
-
-    System.out.println("Application Statistics!\n");
-    FinalApplicationStatus fStatus = null;
-    while (true) {
-      ApplicationReport appReport = yarnClient.getApplicationReport(appId);
-      YarnApplicationState appState = appReport.getYarnApplicationState();
-      fStatus = appReport.getFinalApplicationStatus();
-      if (appState == YarnApplicationState.FINISHED) {
-        isRunning = false;
-        if (fStatus == FinalApplicationStatus.SUCCEEDED) {
-          System.out.println("State: " + fStatus);
-        } else {
-          System.out.println("State: " + fStatus);
-        }
-        break;
-      } else if (appState == YarnApplicationState.KILLED) {
-        isRunning = false;
-        System.out.println("State: " + appState);
-        break;
-      } else if (appState == YarnApplicationState.FAILED) {
-        isRunning = false;
-        System.out.println("State: " + appState);
-        break;
-      }
-      Thread.sleep(100);
-    }
   }
 
   private ApplicationSubmissionContext createAppSubmissionContext(

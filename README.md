@@ -25,7 +25,7 @@ A prototype of running mpich applications on Yarn
 
 1. Redirect container's log to client side.
 
-2. Shutdown the yarn application properly.
+2. Refactor client side IO server to Netty.
 
 3. Upload the mpich executable to HDFS and make it as container's local resource.
  

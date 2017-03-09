@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.mpich.appmaster;
 
-import io.netty.channel.Channel;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mpich.MpiProcess;
@@ -26,6 +25,7 @@ import org.apache.hadoop.mpich.ProcessWorld;
 import org.apache.hadoop.mpich.util.KVStore;
 import org.apache.hadoop.yarn.api.records.Container;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,13 +34,13 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
   private static final Log LOG = LogFactory.getLog(MpiProcessManager.class);
   private Map<String, KVStore> kvStores;
   private Map<Integer, MpiProcess> pmiidToProcess;
-  private Map<Channel, MpiProcess> channelToProcess;
+  private List<MpiProcess> finishedProcess;
   private ContainerAllocator containerAllocator;
 
   public MpiProcessManager(ContainerAllocator containerAllocator) {
     this.kvStores = new HashMap<String, KVStore>();
     this.pmiidToProcess = new HashMap<Integer, MpiProcess>();
-    this.channelToProcess = new HashMap<Channel, MpiProcess>();
+    this.finishedProcess = new ArrayList<MpiProcess>();
     this.containerAllocator = containerAllocator;
   }
 
@@ -55,22 +55,8 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
     return this.pmiidToProcess.get(pmiid);
   }
 
-  public synchronized void addClient(int pmiid, Channel channel) {
-    MpiProcess process = this.getProcessById(pmiid);
-    if (process != null) {
-      process.setChannel(channel);
-      this.channelToProcess.put(channel, process);
-    } else {
-      LOG.error("Can not find process by id " + pmiid);
-    }
-  }
-
   public KVStore getKvStore(String name) {
     return this.kvStores.get(name);
-  }
-
-  public MpiProcess getProcessByChannel(Channel channel) {
-    return channelToProcess.get(channel);
   }
 
   public int getUniverseSize() {
@@ -100,5 +86,17 @@ public class MpiProcessManager implements MpiProcessWorldLauncher {
       e.printStackTrace();
     }
     return false;
+  }
+
+  public synchronized void processFinished(MpiProcess mpiProcess) {
+    this.finishedProcess.add(mpiProcess);
+  }
+
+  public boolean allAppFinished() {
+    return this.finishedProcess.size() == this.getUniverseSize();
+  }
+
+  public void close() {
+    this.containerAllocator.stop();
   }
 }

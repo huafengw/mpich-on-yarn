@@ -18,6 +18,8 @@
 package org.apache.hadoop.mpich.appmaster.pmi;
 
 import io.netty.channel.Channel;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mpich.MpiProcess;
 import org.apache.hadoop.mpich.MpiProcessGroup;
 import org.apache.hadoop.mpich.ProcessWorld;
@@ -32,7 +34,9 @@ import java.util.List;
 import java.util.Map;
 
 public class PMIClientCommandHandler {
+  private static final Log LOG = LogFactory.getLog(PMIClientCommandHandler.class);
   private static List<String> EMPTY_RESPONSE = new ArrayList<String>();
+  private MpiProcess process = null;
   private Channel channel;
   private MpiProcessManager manager;
   private boolean inSpawn = false;
@@ -131,8 +135,8 @@ public class PMIClientCommandHandler {
   private List<String> onInitAck(Map<String, String> kvs) {
     List<String> response = new ArrayList<String>();
     Integer pmiid = Integer.parseInt(kvs.get("pmiid"));
-    MpiProcess process = this.manager.getProcessById(pmiid);
-    manager.addClient(pmiid, this.channel);
+    this.process = this.manager.getProcessById(pmiid);
+    this.process.setChannel(this.channel);
     response.add(new PMIResponseBuilder().append("cmd", "initack").build());
     response.add(new PMIResponseBuilder().append("cmd", "set")
       .append("size", String.valueOf(process.getGroup().getNumProcesses())).build());
@@ -176,11 +180,12 @@ public class PMIClientCommandHandler {
 
   private List<String> onGetMyKvsName(Map<String, String> kvs) {
     List<String> response = new ArrayList<String>();
-    MpiProcess process = this.manager.getProcessByChannel(this.channel);
-    if (process != null) {
+    if (this.process != null) {
       String storeName = process.getGroup().getKvStore().getName();
       response.add(new PMIResponseBuilder().
         append("cmd", "my_kvsname").append("kvsname", storeName).build());
+    } else {
+      // LOG ERROR
     }
     return response;
   }
@@ -212,8 +217,7 @@ public class PMIClientCommandHandler {
   }
 
   private List<String> onBarrierIn(Map<String, String> kvs) {
-    MpiProcess process = this.manager.getProcessByChannel(this.channel);
-    if (process != null) {
+    if (this.process != null) {
       MpiProcessGroup group = process.getGroup();
       Integer numInBarrier = group.getNumInBarrier().incrementAndGet();
       if (numInBarrier == group.getNumProcesses()) {
@@ -224,6 +228,8 @@ public class PMIClientCommandHandler {
         }
         group.getNumInBarrier().set(0);
       }
+    } else {
+      // LOG ERROR
     }
     return EMPTY_RESPONSE;
   }
@@ -232,6 +238,7 @@ public class PMIClientCommandHandler {
     List<String> response = new ArrayList<String>();
     response.add(new PMIResponseBuilder()
       .append("cmd", "finalize_ack").build());
+    this.manager.processFinished(this.process);
     return response;
   }
 

@@ -61,7 +61,7 @@ public class PMIServer {
   }
 
   public void stop() throws InterruptedException {
-    channel.closeFuture().sync();
+    channel.close();
     workerGroup.shutdownGracefully();
     bossGroup.shutdownGracefully();
   }

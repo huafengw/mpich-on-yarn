@@ -18,7 +18,6 @@
 package org.apache.hadoop.mpich.appmaster;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mpich.util.Constants;
@@ -27,7 +26,6 @@ import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterRespo
 import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.exceptions.YarnException;
-import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 
 import java.io.IOException;
@@ -37,7 +35,7 @@ import java.util.Map;
 public class AMRMClientWrapper {
   private Configuration conf;
   private AppMasterArguments arguments;
-  private AMRMClient<AMRMClient.ContainerRequest> rmClient;
+  private AMRMClient<AMRMClient.ContainerRequest> amrmClient;
 
   public AMRMClientWrapper(Configuration conf, AppMasterArguments arguments) {
     this.conf = conf;
@@ -46,12 +44,12 @@ public class AMRMClientWrapper {
 
   public ContainerAllocator register(String pmiServer, int pmiServerPort)
       throws IOException, YarnException {
-    rmClient = AMRMClient.createAMRMClient();
-    rmClient.init(conf);
-    rmClient.start();
+    amrmClient = AMRMClient.createAMRMClient();
+    amrmClient.init(conf);
+    amrmClient.start();
 
     RegisterApplicationMasterResponse registerResponse =
-      rmClient.registerApplicationMaster("", 0, "");
+      amrmClient.registerApplicationMaster("", 0, "");
 
     Priority priority = Records.newRecord(Priority.class);
     priority.setPriority(arguments.getMpjContainerPriority());
@@ -69,7 +67,7 @@ public class AMRMClientWrapper {
       localResource
     );
 
-    return new ContainerAllocator(appContext, rmClient);
+    return new ContainerAllocator(appContext, amrmClient);
   }
 
   private Resource getRevisedResource(RegisterApplicationMasterResponse registerResponse) {
@@ -119,6 +117,7 @@ public class AMRMClientWrapper {
   }
 
   public void unregister() throws IOException, YarnException {
-    rmClient.unregisterApplicationMaster(FinalApplicationStatus.SUCCEEDED,"", "");
+    amrmClient.unregisterApplicationMaster(FinalApplicationStatus.SUCCEEDED,"", "");
+    amrmClient.stop();
   }
 }
