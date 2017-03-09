@@ -39,7 +39,7 @@ import java.net.InetAddress;
 import java.util.*;
 
 public class Client {
-  private Log logger;
+  private static Log logger = LogFactory.getLog(Client.class);
   //conf fetches information from yarn-site.xml and yarn-default.xml.
   private Configuration conf;
   private ClientArguments arguments;
@@ -50,7 +50,6 @@ public class Client {
   private IOMessageHandler ioMessageHandler = null;
 
   public Client(ClientArguments arguments) {
-    this.logger = LogFactory.getLog(Client.class);
     this.conf = new YarnConfiguration();
     this.arguments = arguments;
     this.appMasterJarPath = ClassUtil.findContainingJar(AppMaster.class);

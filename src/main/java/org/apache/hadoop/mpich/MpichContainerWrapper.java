@@ -45,6 +45,7 @@ public class MpichContainerWrapper {
   private String wdir;
   private String rank;
   private String pmiid;
+  private boolean isSpawn = false;
   private String[] appArgs;
   private Options opts;
   private CommandLine cliParser;
@@ -63,6 +64,7 @@ public class MpichContainerWrapper {
     opts.addOption("pmiServer", true, "PMI Server hostname");
     opts.addOption("pmiServerPort", true, "Port required by NIODev to share" +
       "wireup information");
+    opts.addOption("isSpawn", false, "Specify whether the process is the spawn one");
     opts.addOption("appArgs", true, "Specifies the User Application args");
     opts.getOption("appArgs").setArgs(Option.UNLIMITED_VALUES);
   }
@@ -81,6 +83,10 @@ public class MpichContainerWrapper {
       wdir = cliParser.getOptionValue("wdir");
       rank = cliParser.getOptionValue("rank");
       pmiid = cliParser.getOptionValue("pmiid");
+
+      if (cliParser.hasOption("isSpawn")) {
+        this.isSpawn = true;
+      }
 
       if (cliParser.hasOption("appArgs")) {
         appArgs = cliParser.getOptionValues("appArgs");
@@ -114,6 +120,10 @@ public class MpichContainerWrapper {
       evns.put("PMI_SIZE", np);
       evns.put("PMI_ID", pmiid);
       evns.put("PMI_PORT", pmiServer + ":" + pmiServerPort);
+
+      if (this.isSpawn) {
+        evns.put("PMI_SPAWNED", "1");
+      }
 
       LOG.info("Starting process:");
       for (String cmd: commands) {

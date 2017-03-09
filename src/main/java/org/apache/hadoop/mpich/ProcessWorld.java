@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ProcessWorld {
+  private boolean isSpawn;
   private int numApps;
   private int numProcs;
   private int worldNum;
@@ -33,10 +34,15 @@ public class ProcessWorld {
   private List<ProcessApp> apps;
 
   public ProcessWorld() {
+    this(false);
+  }
+
+  public ProcessWorld(boolean isSpawn) {
     this.numApps = 0;
     this.numProcs = 0;
     this.apps = new ArrayList<ProcessApp>();
     this.kvStore = KVStoreFactory.newKVStore();
+    this.isSpawn = isSpawn;
   }
 
   public void addProcessApp(ProcessApp app) {
@@ -66,5 +72,9 @@ public class ProcessWorld {
       builder.append(app.toString());
     }
     return builder.toString();
+  }
+
+  public boolean isSpawn() {
+    return isSpawn;
   }
 }

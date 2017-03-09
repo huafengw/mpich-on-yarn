@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class MpiProcessGroup {
   private final ProcessWorld processWorld;
+  private final boolean isSpawn;
   private final KVStore kvStore;
 //  private int groupId;
   private AtomicInteger numInBarrier;
@@ -36,6 +37,7 @@ public class MpiProcessGroup {
 
   public MpiProcessGroup(ProcessWorld processWorld, KVStore kvStore) {
     this.processWorld = processWorld;
+    this.isSpawn = processWorld.isSpawn();
     this.numInBarrier = new AtomicInteger(0);
     this.remainingProcesses = new HashMap<String, Queue<MpiProcess>>();
     this.idToProcesses = new HashMap<Integer, MpiProcess>();
@@ -102,5 +104,9 @@ public class MpiProcessGroup {
       }
     }
     return null;
+  }
+
+  public boolean isSpawn() {
+    return isSpawn;
   }
 }

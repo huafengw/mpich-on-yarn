@@ -70,4 +70,8 @@ public class MpiProcess {
     builder.append("     Pmiid: " + rank + "\n");
     return builder.toString();
   }
+
+  public boolean isSpawn() {
+    return this.group.isSpawn();
+  }
 }

@@ -146,6 +146,9 @@ public class ContainerAllocator {
     commands.add(Integer.toString(process.getRank()));
     commands.add("--pmiid");
     commands.add(Integer.toString(process.getPmiid()));
+    if (process.isSpawn()) {
+      commands.add("--isSpawn");
+    }
     List<String> appArgs = process.getApp().getArgs();
     if (appArgs != null & appArgs.size() > 0) {
       commands.add("--appArgs");

@@ -17,24 +17,28 @@
  */
 package org.apache.hadoop.mpich.appmaster.pmi;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mpich.ProcessApp;
 import org.apache.hadoop.mpich.ProcessWorld;
 import org.apache.hadoop.mpich.util.KVStore;
 import org.apache.hadoop.mpich.util.KVStoreFactory;
 
 public class SpawnCommandParser {
+  private static Log logger = LogFactory.getLog(SpawnCommandParser.class);
   private int preput_num = -1;
-  private int totalSpawns = -1;
-  private int spawnSoFar = -1;
-  private ProcessWorld processWorld = new ProcessWorld();
+  private int totalSpawns = Integer.MAX_VALUE;
+  private int spawnSoFar = 0;
+  private ProcessWorld processWorld = new ProcessWorld(true);
   private ProcessApp currentApp = new ProcessApp();
   private String currentKey = null;
   private int curInfoIdx = -1;
   private String curInfoKey = null;
-  private KVStore kvStore = KVStoreFactory.newKVStore();
 
   public void process(String msg) {
+//    logger.info("processing msg: " + msg);
     if (msg.trim().equals("endcmd")) {
+      this.spawnSoFar += 1;
       this.processWorld.addProcessApp(currentApp);
       this.currentApp = new ProcessApp();
     } else {
@@ -46,10 +50,10 @@ public class SpawnCommandParser {
           currentApp.setNumProcess(Integer.valueOf(value));
         } else if (key.equals("execname")) {
           currentApp.setExeName(value);
-        } else if (key.equals("totalspawns")) {
+        } else if (key.equals("totspawns")) {
           this.totalSpawns = Integer.valueOf(value);
-        } else if (key.equals("spawnsofar")) {
-          this.spawnSoFar = Integer.valueOf(value);
+        } else if (key.equals("spawnssofar")) {
+          //this.spawnSoFar = Integer.valueOf(value);
           currentApp.setAppNum(this.spawnSoFar - 1);
         } else if (key.equals("argcnt")) {
           currentApp.setArgNum(Integer.valueOf(value));
@@ -61,7 +65,7 @@ public class SpawnCommandParser {
         } else if (key.startsWith("preput_key_")) {
           this.currentKey = value;
         } else if (key.startsWith("preput_val_")) {
-          kvStore.put(this.currentKey, value);
+          processWorld.getKvStore().put(this.currentKey, value);
         } else if (key.equals("info_num")) {
           //
         } else if (key.startsWith("info_key_")) {
