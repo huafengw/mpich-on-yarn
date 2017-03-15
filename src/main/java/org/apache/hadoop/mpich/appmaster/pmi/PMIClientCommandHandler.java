@@ -221,12 +221,12 @@ public class PMIClientCommandHandler {
       MpiProcessGroup group = process.getGroup();
       Integer numInBarrier = group.getNumInBarrier().incrementAndGet();
       if (numInBarrier == group.getNumProcesses()) {
+        group.getNumInBarrier().set(0);
         String response = new PMIResponseBuilder().append("cmd", "barrier_out").build();
         for (MpiProcess proc : group.getProcesses()) {
           proc.getChannel().write(response);
           proc.getChannel().flush();
         }
-        group.getNumInBarrier().set(0);
       }
     } else {
       // LOG ERROR
